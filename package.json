@@ -1,0 +1,15 @@
+{
+  "name": "raiko",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/backend",
+    "apps/agent-windows",
+    "packages/shared_types"
+  ],
+  "scripts": {
+    "build": "npm run build --workspace @raiko/shared-types && npm run build --workspace @raiko/backend && npm run build --workspace @raiko/agent-windows",
+    "dev:backend": "npm run dev --workspace @raiko/backend",
+    "dev:agent": "npm run dev --workspace @raiko/agent-windows"
+  }
+}

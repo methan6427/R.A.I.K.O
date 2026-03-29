@@ -1,0 +1,13 @@
+.dart_tool/
+.idea/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub/
+.pub-cache/
+build/
+node_modules/
+dist/
+coverage/
+*.iml
+pubspec.lock

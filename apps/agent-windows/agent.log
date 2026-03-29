@@ -1,0 +1,10 @@
+[agent] Starting Windows agent {"agentId":"agent-win-01","backendUrl":"ws://127.0.0.1:8080/ws"}
+[agent] Connected to backend {"url":"ws://127.0.0.1:8080/ws"}
+[agent] Command received {"commandId":"cmd-1774755294960","action":"lock"}
+[agent] Command processed {"commandId":"cmd-1774755294960","status":"success","output":"Lock scheduled (skeleton)."}
+[agent] Command received {"commandId":"cmd-1774755298859","action":"sleep"}
+[agent] Command processed {"commandId":"cmd-1774755298859","status":"success","output":"Sleep scheduled (skeleton)."}
+[agent] Command received {"commandId":"cmd-1774756604439","action":"lock"}
+[agent] Command processed {"commandId":"cmd-1774756604439","status":"success","output":"Lock scheduled (skeleton)."}
+[agent] Command received {"commandId":"cmd-1774756608596","action":"sleep"}
+[agent] Command processed {"commandId":"cmd-1774756608596","status":"success","output":"Sleep scheduled (skeleton)."}
