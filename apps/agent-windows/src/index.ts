@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { loadConfig } from "./config.js";
 import { AgentClient } from "./agent/agent-client.js";
 import { AgentLogger } from "./logger.js";
