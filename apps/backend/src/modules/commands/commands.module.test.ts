@@ -82,8 +82,9 @@ class InMemoryCommandsRepository implements CommandsRepository {
     status: "success" | "failed";
     output: string;
     completedAt: string;
-  }): Promise<void> {
+  }): Promise<boolean> {
     await this.update(result);
+    return this.records.has(result.commandId);
   }
 
   async listRecent(limit: number) {
@@ -211,4 +212,27 @@ test("CommandsModule records command results", async () => {
 
   assert.equal((await commands.list())[0]?.status, "success");
   assert.equal((await commands.list())[0]?.output, "done");
+});
+
+test("CommandsModule ignores unknown command results", async () => {
+  const registry = new DeviceRegistry();
+  const activity = new ActivityModule(new InMemoryActivityRepository(), createSilentLogger("activity"));
+  const commands = new CommandsModule(
+    new InMemoryCommandsRepository(),
+    new CommandDispatcher(registry, createSilentLogger("commands")),
+    activity,
+  );
+
+  const recorded = await commands.recordResult({
+    commandId: "missing-command",
+    agentId: "agent-01",
+    action: AgentCommand.Lock,
+    status: "success",
+    output: "done",
+    completedAt: "2026-03-29T10:05:00.000Z",
+  });
+
+  assert.equal(recorded, false);
+  assert.deepEqual(await commands.list(), []);
+  assert.deepEqual(await activity.list(), []);
 });

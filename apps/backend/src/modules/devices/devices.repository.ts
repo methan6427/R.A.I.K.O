@@ -29,6 +29,10 @@ export interface UpsertAgentConnectionInput {
 export interface DevicesRepository {
   upsertDeviceConnection(input: UpsertDeviceConnectionInput): Promise<DeviceSummary>;
   upsertAgentConnection(input: UpsertAgentConnectionInput): Promise<AgentSummary>;
+  reconcileStartupState(disconnectedAt: string): Promise<{
+    devicesMarkedOffline: number;
+    agentsMarkedOffline: number;
+  }>;
   markHeartbeat(clientId: string, status: ConnectionStatus, sentAt: string): Promise<void>;
   markDeviceDisconnected(deviceId: string, disconnectedAt: string): Promise<void>;
   markAgentDisconnected(agentId: string, disconnectedAt: string): Promise<void>;
@@ -58,6 +62,37 @@ interface AgentRow extends QueryResultRow {
 
 export class PostgresDevicesRepository implements DevicesRepository {
   constructor(private readonly database: DatabaseClient) {}
+
+  async reconcileStartupState(disconnectedAt: string): Promise<{
+    devicesMarkedOffline: number;
+    agentsMarkedOffline: number;
+  }> {
+    const devicesResult = await this.database.query(
+      `
+        UPDATE devices
+        SET status = 'offline',
+            disconnected_at = COALESCE(disconnected_at, $1),
+            updated_at = NOW()
+        WHERE status = 'online'
+      `,
+      [disconnectedAt],
+    );
+    const agentsResult = await this.database.query(
+      `
+        UPDATE agents
+        SET status = 'offline',
+            disconnected_at = COALESCE(disconnected_at, $1),
+            updated_at = NOW()
+        WHERE status = 'online'
+      `,
+      [disconnectedAt],
+    );
+
+    return {
+      devicesMarkedOffline: devicesResult.rowCount ?? 0,
+      agentsMarkedOffline: agentsResult.rowCount ?? 0,
+    };
+  }
 
   async upsertDeviceConnection(input: UpsertDeviceConnectionInput): Promise<DeviceSummary> {
     const result = await this.database.query<DeviceRow>(

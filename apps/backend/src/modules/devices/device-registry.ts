@@ -120,11 +120,16 @@ export class DeviceRegistry {
     return Array.from(this.agents.values()).map(({ socket: _socket, ...agent }) => ({ ...agent }));
   }
 
+  listDeviceSockets(): WebSocket[] {
+    return Array.from(this.devices.values(), (device) => device.socket);
+  }
+
+  listAgentSockets(): WebSocket[] {
+    return Array.from(this.agents.values(), (agent) => agent.socket);
+  }
+
   listClientSockets(): WebSocket[] {
-    return [
-      ...Array.from(this.devices.values(), (device) => device.socket),
-      ...Array.from(this.agents.values(), (agent) => agent.socket),
-    ];
+    return [...this.listDeviceSockets(), ...this.listAgentSockets()];
   }
 
   private dropExistingSocket(id: string, kind: "device" | "agent"): void {

@@ -52,9 +52,14 @@ export class CommandsModule {
     return result;
   }
 
-  async recordResult(payload: CommandResultPayload): Promise<void> {
-    await this.repository.recordResult(payload);
+  async recordResult(payload: CommandResultPayload): Promise<boolean> {
+    const recorded = await this.repository.recordResult(payload);
+    if (!recorded) {
+      return false;
+    }
+
     await this.activity.track("command.result", payload.agentId, `${payload.action} => ${payload.status}`);
+    return true;
   }
 
   async list(): Promise<CommandLogEntry[]> {

@@ -79,6 +79,7 @@ export class ModuleContainer {
     );
     const automation = new AutomationModule();
 
+    await devices.reconcileStartupState();
     await users.ensureBootstrapUser();
     await settings.syncRuntimeSettings(config);
 

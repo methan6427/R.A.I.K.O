@@ -66,3 +66,30 @@ test("DeviceRegistry unregisters sockets by identity", () => {
   });
   assert.equal(registry.listAgents().length, 0);
 });
+
+test("DeviceRegistry exposes device and agent sockets separately", () => {
+  const registry = new DeviceRegistry();
+  const deviceSocket = new MockSocket();
+  const agentSocket = new MockSocket();
+
+  registry.registerDevice({
+    id: "mobile-02",
+    name: "Mobile 02",
+    platform: "android",
+    kind: "mobile",
+    socket: deviceSocket as unknown as WebSocket,
+  });
+  registry.registerAgent({
+    id: "agent-03",
+    name: "Agent 03",
+    platform: "windows",
+    socket: agentSocket as unknown as WebSocket,
+  });
+
+  assert.deepEqual(registry.listDeviceSockets(), [deviceSocket as unknown as WebSocket]);
+  assert.deepEqual(registry.listAgentSockets(), [agentSocket as unknown as WebSocket]);
+  assert.deepEqual(registry.listClientSockets(), [
+    deviceSocket as unknown as WebSocket,
+    agentSocket as unknown as WebSocket,
+  ]);
+});

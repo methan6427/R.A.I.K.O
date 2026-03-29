@@ -19,6 +19,12 @@ export class DevicesModule {
     private readonly logger: Logger,
   ) {}
 
+  async reconcileStartupState(): Promise<void> {
+    const reconciliation = await this.repository.reconcileStartupState(new Date().toISOString());
+
+    this.logger.info("Reconciled persisted connection state on startup", reconciliation);
+  }
+
   async registerDevice(payload: DeviceRegisterPayload, socket: WebSocket): Promise<void> {
     this.registry.registerDevice({
       id: payload.deviceId,

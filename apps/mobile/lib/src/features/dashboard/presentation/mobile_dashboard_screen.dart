@@ -1,11 +1,22 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:raiko_ui/raiko_ui.dart';
 import 'package:shared_theme/shared_theme.dart';
 
+import '../../../core/config/raiko_backend_config.dart';
+import '../../../core/network/raiko_backend_models.dart';
 import '../../../core/network/raiko_ws_client.dart';
 
 class MobileDashboardScreen extends StatefulWidget {
-  const MobileDashboardScreen({super.key});
+  const MobileDashboardScreen({
+    super.key,
+    this.initialBackendConfig = RaikoBackendConfig.defaults,
+    this.autoStartBackend = true,
+  });
+
+  final RaikoBackendConfig initialBackendConfig;
+  final bool autoStartBackend;
 
   @override
   State<MobileDashboardScreen> createState() => _MobileDashboardScreenState();
@@ -13,7 +24,8 @@ class MobileDashboardScreen extends StatefulWidget {
 
 class _MobileDashboardScreenState extends State<MobileDashboardScreen> {
   late final RaikoWsClient client;
-  late final TextEditingController backendUrlController;
+  late final TextEditingController baseHttpUrlController;
+  late final TextEditingController websocketUrlController;
   late final TextEditingController authTokenController;
   int currentIndex = 0;
 
@@ -25,14 +37,20 @@ class _MobileDashboardScreenState extends State<MobileDashboardScreen> {
       deviceName: 'RAIKO Mobile',
       platform: 'android',
       kind: 'mobile',
+      initialConfig: widget.initialBackendConfig,
     )..addListener(_onChanged);
-    backendUrlController = TextEditingController(text: client.backendUrl);
+    baseHttpUrlController = TextEditingController(text: client.baseHttpUrl);
+    websocketUrlController = TextEditingController(text: client.websocketUrl);
     authTokenController = TextEditingController(text: client.authToken);
+    if (widget.autoStartBackend) {
+      unawaited(client.start());
+    }
   }
 
   @override
   void dispose() {
-    backendUrlController.dispose();
+    baseHttpUrlController.dispose();
+    websocketUrlController.dispose();
     authTokenController.dispose();
     client.removeListener(_onChanged);
     client.disconnect();
@@ -41,8 +59,11 @@ class _MobileDashboardScreenState extends State<MobileDashboardScreen> {
   }
 
   void _onChanged() {
-    if (backendUrlController.text != client.backendUrl) {
-      backendUrlController.text = client.backendUrl;
+    if (baseHttpUrlController.text != client.baseHttpUrl) {
+      baseHttpUrlController.text = client.baseHttpUrl;
+    }
+    if (websocketUrlController.text != client.websocketUrl) {
+      websocketUrlController.text = client.websocketUrl;
     }
     if (authTokenController.text != client.authToken) {
       authTokenController.text = client.authToken;
@@ -54,7 +75,13 @@ class _MobileDashboardScreenState extends State<MobileDashboardScreen> {
   }
 
   Future<void> _connect() async {
-    await client.connect(backendUrlController.text);
+    client.updateConnectionSettings(
+      baseHttpUrl: baseHttpUrlController.text,
+      websocketUrl: websocketUrlController.text,
+      authToken: authTokenController.text,
+    );
+    await client.reconnect();
+    await client.loadOverview();
   }
 
   void _showVoiceConsole() {
@@ -70,7 +97,10 @@ class _MobileDashboardScreenState extends State<MobileDashboardScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Voice Relay', style: Theme.of(context).textTheme.titleLarge),
+                Text(
+                  'Voice Relay',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
                 const SizedBox(height: 8),
                 Text(
                   'The voice path is staged for commands like "lock my PC" and "restart office desktop".',
@@ -108,11 +138,23 @@ class _MobileDashboardScreenState extends State<MobileDashboardScreen> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                Text('Suggested phrases', style: Theme.of(context).textTheme.titleMedium),
+                Text(
+                  'Suggested phrases',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
                 const SizedBox(height: 8),
-                Text('• "Raiko lock the office PC"', style: Theme.of(context).textTheme.bodyMedium),
-                Text('• "Raiko restart my workstation"', style: Theme.of(context).textTheme.bodyMedium),
-                Text('• "Raiko put the desktop to sleep"', style: Theme.of(context).textTheme.bodyMedium),
+                Text(
+                  '• "Raiko lock the office PC"',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                Text(
+                  '• "Raiko restart my workstation"',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                Text(
+                  '• "Raiko put the desktop to sleep"',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
               ],
             ),
           ),
@@ -129,11 +171,15 @@ class _MobileDashboardScreenState extends State<MobileDashboardScreen> {
       _ActivityTab(client: client),
       _SettingsTab(
         client: client,
-        backendUrlController: backendUrlController,
+        baseHttpUrlController: baseHttpUrlController,
+        websocketUrlController: websocketUrlController,
         authTokenController: authTokenController,
         onApplyConnectionSettings: () {
-          client.updateBackendUrl(backendUrlController.text);
-          client.updateAuthToken(authTokenController.text);
+          client.updateConnectionSettings(
+            baseHttpUrl: baseHttpUrlController.text,
+            websocketUrl: websocketUrlController.text,
+            authToken: authTokenController.text,
+          );
         },
         onConnect: _connect,
       ),
@@ -167,7 +213,9 @@ class _MobileDashboardScreenState extends State<MobileDashboardScreen> {
             borderRadius: BorderRadius.circular(24),
             child: NavigationBarTheme(
               data: NavigationBarThemeData(
-                backgroundColor: RaikoColors.cardElevated.withValues(alpha: 0.96),
+                backgroundColor: RaikoColors.cardElevated.withValues(
+                  alpha: 0.96,
+                ),
                 indicatorColor: RaikoColors.accent.withValues(alpha: 0.2),
                 iconTheme: WidgetStateProperty.resolveWith<IconThemeData?>(
                   (Set<WidgetState> states) => IconThemeData(
@@ -177,7 +225,8 @@ class _MobileDashboardScreenState extends State<MobileDashboardScreen> {
                   ),
                 ),
                 labelTextStyle: WidgetStateProperty.resolveWith<TextStyle?>(
-                  (Set<WidgetState> states) => Theme.of(context).textTheme.labelMedium?.copyWith(
+                  (Set<WidgetState> states) =>
+                      Theme.of(context).textTheme.labelMedium?.copyWith(
                         color: states.contains(WidgetState.selected)
                             ? RaikoColors.textPrimary
                             : RaikoColors.textSecondary,
@@ -192,10 +241,22 @@ class _MobileDashboardScreenState extends State<MobileDashboardScreen> {
                   });
                 },
                 destinations: const <NavigationDestination>[
-                  NavigationDestination(icon: Icon(Icons.home_outlined), label: 'Home'),
-                  NavigationDestination(icon: Icon(Icons.devices_outlined), label: 'Devices'),
-                  NavigationDestination(icon: Icon(Icons.timeline_outlined), label: 'Activity'),
-                  NavigationDestination(icon: Icon(Icons.settings_outlined), label: 'Settings'),
+                  NavigationDestination(
+                    icon: Icon(Icons.home_outlined),
+                    label: 'Home',
+                  ),
+                  NavigationDestination(
+                    icon: Icon(Icons.devices_outlined),
+                    label: 'Devices',
+                  ),
+                  NavigationDestination(
+                    icon: Icon(Icons.timeline_outlined),
+                    label: 'Activity',
+                  ),
+                  NavigationDestination(
+                    icon: Icon(Icons.settings_outlined),
+                    label: 'Settings',
+                  ),
                 ],
               ),
             ),
@@ -207,10 +268,7 @@ class _MobileDashboardScreenState extends State<MobileDashboardScreen> {
 }
 
 class _HomeTab extends StatelessWidget {
-  const _HomeTab({
-    required this.client,
-    required this.onConnect,
-  });
+  const _HomeTab({required this.client, required this.onConnect});
 
   final RaikoWsClient client;
   final Future<void> Function() onConnect;
@@ -229,7 +287,9 @@ class _HomeTab extends StatelessWidget {
               subtitle: 'Mobile orchestration for live Windows endpoints.',
               trailing: RaikoStatusBadge(
                 label: client.isConnected ? 'Linked' : 'Offline',
-                color: client.isConnected ? RaikoColors.success : RaikoColors.danger,
+                color: client.isConnected
+                    ? RaikoColors.success
+                    : RaikoColors.danger,
               ),
             ),
             const SizedBox(height: 24),
@@ -237,7 +297,9 @@ class _HomeTab extends StatelessWidget {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(child: _SessionCard(client: client, onConnect: onConnect)),
+                  Expanded(
+                    child: _SessionCard(client: client, onConnect: onConnect),
+                  ),
                   const SizedBox(width: 16),
                   Expanded(child: _QuickActionsCard(client: client)),
                 ],
@@ -268,10 +330,13 @@ class _DevicesTab extends StatelessWidget {
         RaikoHeader(
           eyebrow: 'DEVICES',
           title: 'Connected Surfaces',
-          subtitle: 'Agents and client devices currently visible to the control backend.',
+          subtitle:
+              'Agents and client devices currently visible to the control backend.',
           trailing: RaikoStatusBadge(
             label: '${client.agents.length} agents',
-            color: client.agents.isEmpty ? RaikoColors.warning : RaikoColors.success,
+            color: client.agents.isEmpty
+                ? RaikoColors.warning
+                : RaikoColors.success,
           ),
         ),
         const SizedBox(height: 24),
@@ -329,7 +394,9 @@ class _DevicesTab extends StatelessWidget {
                 subtitle: '${device.platform} • ${device.kind}',
                 statusLabel: device.status.toUpperCase(),
                 statusColor: _statusColor(device.status),
-                icon: device.kind == 'mobile' ? Icons.phone_android_rounded : Icons.desktop_windows_rounded,
+                icon: device.kind == 'mobile'
+                    ? Icons.phone_android_rounded
+                    : Icons.desktop_windows_rounded,
                 trailing: Text(
                   _formatTimestamp(device.lastSeenAt),
                   style: Theme.of(context).textTheme.labelMedium,
@@ -355,7 +422,8 @@ class _ActivityTab extends StatelessWidget {
         RaikoHeader(
           eyebrow: 'ACTIVITY',
           title: 'Operational Feed',
-          subtitle: 'Recent command results, heartbeats, and registration events.',
+          subtitle:
+              'Recent command results, heartbeats, and registration events.',
           trailing: RaikoStatusBadge(
             label: '${client.activity.length} events',
             color: RaikoColors.accentStrong,
@@ -373,14 +441,16 @@ class _ActivityTab extends StatelessWidget {
 class _SettingsTab extends StatelessWidget {
   const _SettingsTab({
     required this.client,
-    required this.backendUrlController,
+    required this.baseHttpUrlController,
+    required this.websocketUrlController,
     required this.authTokenController,
     required this.onApplyConnectionSettings,
     required this.onConnect,
   });
 
   final RaikoWsClient client;
-  final TextEditingController backendUrlController;
+  final TextEditingController baseHttpUrlController;
+  final TextEditingController websocketUrlController;
   final TextEditingController authTokenController;
   final VoidCallback onApplyConnectionSettings;
   final Future<void> Function() onConnect;
@@ -392,10 +462,13 @@ class _SettingsTab extends StatelessWidget {
         RaikoHeader(
           eyebrow: 'SETTINGS',
           title: 'Control Preferences',
-          subtitle: 'Tune the mobile relay and connection target before production rollout.',
+          subtitle:
+              'Tune the mobile relay and connection target before production rollout.',
           trailing: RaikoStatusBadge(
             label: client.lastError == null ? 'Healthy' : 'Needs Attention',
-            color: client.lastError == null ? RaikoColors.success : RaikoColors.warning,
+            color: client.lastError == null
+                ? RaikoColors.success
+                : RaikoColors.warning,
           ),
         ),
         const SizedBox(height: 24),
@@ -403,21 +476,31 @@ class _SettingsTab extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Backend Endpoint', style: Theme.of(context).textTheme.titleLarge),
+              Text(
+                'Backend Endpoint',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
               const SizedBox(height: 8),
               Text(
-                'Point the mobile client at the active websocket gateway.',
+                'Point the mobile client at the active HTTP API and websocket gateway.',
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
               const SizedBox(height: 16),
               TextField(
-                controller: backendUrlController,
+                controller: baseHttpUrlController,
+                decoration: const InputDecoration(labelText: 'Base HTTP URL'),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: websocketUrlController,
                 decoration: const InputDecoration(labelText: 'WebSocket URL'),
               ),
               const SizedBox(height: 16),
               TextField(
                 controller: authTokenController,
-                decoration: const InputDecoration(labelText: 'Auth token (optional)'),
+                decoration: const InputDecoration(
+                  labelText: 'Auth token (optional)',
+                ),
                 obscureText: true,
               ),
               const SizedBox(height: 16),
@@ -449,13 +532,28 @@ class _SettingsTab extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Device Identity', style: Theme.of(context).textTheme.titleLarge),
+              Text(
+                'Device Identity',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
               const SizedBox(height: 12),
               _InfoRow(label: 'Device ID', value: client.deviceId),
               _InfoRow(label: 'Name', value: client.deviceName),
               _InfoRow(label: 'Platform', value: client.platform),
-              _InfoRow(label: 'Selected Agent', value: client.selectedAgentId.isEmpty ? 'none' : client.selectedAgentId),
-              _InfoRow(label: 'Auth Token', value: client.authToken.isEmpty ? 'not configured' : 'configured'),
+              _InfoRow(label: 'HTTP API', value: client.baseHttpUrl),
+              _InfoRow(label: 'WebSocket', value: client.websocketUrl),
+              _InfoRow(
+                label: 'Selected Agent',
+                value: client.selectedAgentId.isEmpty
+                    ? 'none'
+                    : client.selectedAgentId,
+              ),
+              _InfoRow(
+                label: 'Auth Token',
+                value: client.authToken.isEmpty
+                    ? 'not configured'
+                    : 'configured',
+              ),
               if (client.lastError != null)
                 _InfoRow(label: 'Last Error', value: client.lastError!),
             ],
@@ -467,10 +565,7 @@ class _SettingsTab extends StatelessWidget {
 }
 
 class _SessionCard extends StatelessWidget {
-  const _SessionCard({
-    required this.client,
-    required this.onConnect,
-  });
+  const _SessionCard({required this.client, required this.onConnect});
 
   final RaikoWsClient client;
   final Future<void> Function() onConnect;
@@ -490,12 +585,19 @@ class _SessionCard extends StatelessWidget {
           const SizedBox(height: 20),
           RaikoButton(
             label: client.isConnected ? 'Disconnect' : 'Connect to Backend',
-            icon: client.isConnected ? Icons.link_off_rounded : Icons.wifi_tethering_rounded,
-            onPressed: client.isConnected ? client.disconnect : () => onConnect(),
+            icon: client.isConnected
+                ? Icons.link_off_rounded
+                : Icons.wifi_tethering_rounded,
+            onPressed: client.isConnected
+                ? client.disconnect
+                : () => onConnect(),
           ),
           const SizedBox(height: 16),
           DropdownButtonFormField<String>(
-            initialValue: client.agents.any((RaikoAgentInfo agent) => agent.id == client.selectedAgentId)
+            initialValue:
+                client.agents.any(
+                  (RaikoAgentInfo agent) => agent.id == client.selectedAgentId,
+                )
                 ? client.selectedAgentId
                 : null,
             decoration: const InputDecoration(labelText: 'Target agent'),
@@ -530,9 +632,21 @@ class _QuickActionsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final actions = <Widget>[
-      RaikoButton(label: 'Lock', icon: Icons.lock_outline_rounded, onPressed: () => client.sendCommand('lock')),
-      RaikoButton(label: 'Sleep', icon: Icons.nightlight_round, onPressed: () => client.sendCommand('sleep')),
-      RaikoButton(label: 'Restart', icon: Icons.restart_alt_rounded, onPressed: () => client.sendCommand('restart')),
+      RaikoButton(
+        label: 'Lock',
+        icon: Icons.lock_outline_rounded,
+        onPressed: () => client.sendCommand('lock'),
+      ),
+      RaikoButton(
+        label: 'Sleep',
+        icon: Icons.nightlight_round,
+        onPressed: () => client.sendCommand('sleep'),
+      ),
+      RaikoButton(
+        label: 'Restart',
+        icon: Icons.restart_alt_rounded,
+        onPressed: () => client.sendCommand('restart'),
+      ),
       RaikoButton(
         label: 'Shutdown',
         icon: Icons.power_settings_new_rounded,
@@ -547,7 +661,10 @@ class _QuickActionsCard extends StatelessWidget {
         children: [
           Text('Quick Actions', style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 8),
-          Text('Touch-first control deck for the currently selected agent.', style: Theme.of(context).textTheme.bodyMedium),
+          Text(
+            'Touch-first control deck for the currently selected agent.',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
           const SizedBox(height: 20),
           GridView.count(
             crossAxisCount: 2,
@@ -577,16 +694,23 @@ class _RecentCommandsCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Recent Commands', style: Theme.of(context).textTheme.titleLarge),
+          Text(
+            'Recent Commands',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
           const SizedBox(height: 12),
           if (recentCommands.isEmpty)
-            Text('No commands have been sent yet.', style: Theme.of(context).textTheme.bodyMedium),
+            Text(
+              'No commands have been sent yet.',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
           for (final RaikoCommandInfo command in recentCommands)
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: _TimelineRow(
                 title: command.action.toUpperCase(),
-                subtitle: '${command.targetAgentId} • ${_formatTimestamp(command.createdAt)}',
+                subtitle:
+                    '${command.targetAgentId} • ${_formatTimestamp(command.createdAt)}',
                 badgeLabel: command.status.toUpperCase(),
                 badgeColor: _statusColor(command.status),
               ),
@@ -608,10 +732,16 @@ class _CommandHistoryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Command History', style: Theme.of(context).textTheme.titleLarge),
+          Text(
+            'Command History',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
           const SizedBox(height: 12),
           if (client.commands.isEmpty)
-            Text('No command records yet.', style: Theme.of(context).textTheme.bodyMedium),
+            Text(
+              'No command records yet.',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
           for (final RaikoCommandInfo command in client.commands.take(10))
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
@@ -642,13 +772,17 @@ class _ActivityFeedCard extends StatelessWidget {
           Text('Event Feed', style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 12),
           if (client.activity.isEmpty)
-            Text('No activity has been reported yet.', style: Theme.of(context).textTheme.bodyMedium),
+            Text(
+              'No activity has been reported yet.',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
           for (final RaikoActivityInfo event in client.activity.take(12))
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: _TimelineRow(
                 title: '${event.type} • ${event.actorId}',
-                subtitle: '${event.detail} • ${_formatTimestamp(event.createdAt)}',
+                subtitle:
+                    '${event.detail} • ${_formatTimestamp(event.createdAt)}',
                 badgeLabel: 'LIVE',
                 badgeColor: RaikoColors.accentStrong,
               ),
@@ -753,10 +887,7 @@ class _TimelineRow extends StatelessWidget {
 }
 
 class _InfoRow extends StatelessWidget {
-  const _InfoRow({
-    required this.label,
-    required this.value,
-  });
+  const _InfoRow({required this.label, required this.value});
 
   final String label;
   final String value;

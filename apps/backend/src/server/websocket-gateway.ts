@@ -38,13 +38,9 @@ export function attachWebSocketGateway(
     logger.info("Socket connected", {
       remoteAddress: request.socket.remoteAddress,
     });
-    void sendSnapshots(socket, modules).catch((error) => {
-      logger.error("Failed to send initial websocket snapshots", serializeError(error));
-      sendError(socket, error instanceof Error ? error.message : "Failed to load snapshots");
-    });
 
     socket.on("message", (raw) => {
-      void handleMessage(modules, socket, raw.toString()).catch((error) => {
+      void handleMessage(modules, socket, raw.toString(), logger).catch((error) => {
         logger.error("Failed to handle websocket message", serializeError(error));
         sendError(socket, error instanceof Error ? error.message : "Invalid payload");
       });
@@ -62,6 +58,7 @@ async function handleMessage(
   modules: ModuleContainer,
   socket: WebSocket,
   text: string,
+  logger: Logger,
 ): Promise<void> {
   const envelope = JSON.parse(text) as RaikoEnvelope<unknown>;
 
@@ -101,7 +98,17 @@ async function handleMessage(
     }
     case ClientEventType.CommandResult: {
       const payload = envelope.payload as CommandResultPayload;
-      await modules.commands.recordResult(payload);
+      const recorded = await modules.commands.recordResult(payload);
+      if (!recorded) {
+        logger.warn("Rejected unknown command result", {
+          commandId: payload.commandId,
+          agentId: payload.agentId,
+          action: payload.action,
+          status: payload.status,
+        });
+        return;
+      }
+
       broadcastCommandResult(modules, payload, socket);
       await broadcastSnapshots(modules);
       return;
@@ -151,29 +158,9 @@ async function broadcastSnapshots(modules: ModuleContainer): Promise<void> {
     commands: commandEntries,
   };
 
-  broadcast(modules, ServerEventType.DeviceState, deviceState);
-  broadcast(modules, ServerEventType.ActivitySnapshot, activity);
-  broadcast(modules, ServerEventType.CommandSnapshot, commands);
-}
-
-async function sendSnapshots(socket: WebSocket, modules: ModuleContainer): Promise<void> {
-  const [devices, agents, activityEntries, commands] = await Promise.all([
-    modules.devices.listDevices(),
-    modules.devices.listAgents(),
-    modules.activity.list(),
-    modules.commands.list(),
-  ]);
-
-  send(socket, ServerEventType.DeviceState, {
-    devices,
-    agents,
-  });
-  send(socket, ServerEventType.ActivitySnapshot, {
-    activity: activityEntries,
-  });
-  send(socket, ServerEventType.CommandSnapshot, {
-    commands,
-  });
+  broadcastToDevices(modules, ServerEventType.DeviceState, deviceState);
+  broadcastToDevices(modules, ServerEventType.ActivitySnapshot, activity);
+  broadcastToDevices(modules, ServerEventType.CommandSnapshot, commands);
 }
 
 function broadcastCommandResult(
@@ -181,11 +168,20 @@ function broadcastCommandResult(
   payload: CommandResultPayload,
   except?: WebSocket,
 ): void {
-  broadcast(modules, ServerEventType.CommandResult, payload, except);
+  broadcastToDevices(modules, ServerEventType.CommandResult, payload, except);
+}
+
+function broadcastToDevices<TPayload>(
+  modules: ModuleContainer,
+  type: ServerEventType,
+  payload: TPayload,
+  except?: WebSocket,
+): void {
+  broadcast(modules.registry.listDeviceSockets(), type, payload, except);
 }
 
 function broadcast<TPayload>(
-  modules: ModuleContainer,
+  sockets: WebSocket[],
   type: ServerEventType,
   payload: TPayload,
   except?: WebSocket,
@@ -195,7 +191,7 @@ function broadcast<TPayload>(
     payload,
   } satisfies RaikoEnvelope<TPayload>);
 
-  for (const socket of modules.registry.listClientSockets()) {
+  for (const socket of sockets) {
     if (socket !== except && socket.readyState === socket.OPEN) {
       socket.send(serialized);
     }

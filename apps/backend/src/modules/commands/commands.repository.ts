@@ -28,7 +28,7 @@ export interface CommandResultRecord {
 export interface CommandsRepository {
   storePending(command: PendingCommandRecord): Promise<void>;
   recordFailure(result: CommandResultRecord): Promise<void>;
-  recordResult(result: CommandResultPayload): Promise<void>;
+  recordResult(result: CommandResultPayload): Promise<boolean>;
   listRecent(limit: number): Promise<CommandLogEntry[]>;
 }
 
@@ -86,8 +86,8 @@ export class PostgresCommandsRepository implements CommandsRepository {
     await this.applyCommandResult(result);
   }
 
-  async recordResult(result: CommandResultPayload): Promise<void> {
-    await this.applyCommandResult(result);
+  async recordResult(result: CommandResultPayload): Promise<boolean> {
+    return this.applyCommandResult(result);
   }
 
   async listRecent(limit: number): Promise<CommandLogEntry[]> {
@@ -125,8 +125,8 @@ export class PostgresCommandsRepository implements CommandsRepository {
     }));
   }
 
-  private async applyCommandResult(result: CommandResultRecord): Promise<void> {
-    await this.database.transaction(async (client) => {
+  private async applyCommandResult(result: CommandResultRecord): Promise<boolean> {
+    return this.database.transaction(async (client) => {
       const updateResult = await client.query(
         `
           UPDATE commands
@@ -137,10 +137,11 @@ export class PostgresCommandsRepository implements CommandsRepository {
       );
 
       if (updateResult.rowCount === 0) {
-        return;
+        return false;
       }
 
       await upsertCommandResult(client, result);
+      return true;
     });
   }
 }

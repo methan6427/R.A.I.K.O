@@ -1,131 +1,12 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 
-class RaikoDeviceInfo {
-  const RaikoDeviceInfo({
-    required this.id,
-    required this.name,
-    required this.platform,
-    required this.kind,
-    required this.status,
-    required this.connectedAt,
-    required this.lastSeenAt,
-  });
-
-  final String id;
-  final String name;
-  final String platform;
-  final String kind;
-  final String status;
-  final String connectedAt;
-  final String lastSeenAt;
-
-  factory RaikoDeviceInfo.fromJson(Map<String, dynamic> json) {
-    return RaikoDeviceInfo(
-      id: json['id'] as String? ?? 'unknown-device',
-      name: json['name'] as String? ?? 'Unknown Device',
-      platform: json['platform'] as String? ?? 'unknown',
-      kind: json['kind'] as String? ?? 'desktop',
-      status: json['status'] as String? ?? 'offline',
-      connectedAt: json['connectedAt'] as String? ?? '',
-      lastSeenAt: json['lastSeenAt'] as String? ?? '',
-    );
-  }
-}
-
-class RaikoAgentInfo {
-  const RaikoAgentInfo({
-    required this.id,
-    required this.name,
-    required this.platform,
-    required this.status,
-    required this.connectedAt,
-    required this.lastSeenAt,
-    required this.supportedCommands,
-  });
-
-  final String id;
-  final String name;
-  final String platform;
-  final String status;
-  final String connectedAt;
-  final String lastSeenAt;
-  final List<String> supportedCommands;
-
-  factory RaikoAgentInfo.fromJson(Map<String, dynamic> json) {
-    return RaikoAgentInfo(
-      id: json['id'] as String? ?? 'unknown-agent',
-      name: json['name'] as String? ?? 'Unknown Agent',
-      platform: json['platform'] as String? ?? 'unknown',
-      status: json['status'] as String? ?? 'offline',
-      connectedAt: json['connectedAt'] as String? ?? '',
-      lastSeenAt: json['lastSeenAt'] as String? ?? '',
-      supportedCommands: (json['supportedCommands'] as List<dynamic>? ?? const <dynamic>[])
-          .map((dynamic item) => item.toString())
-          .toList(growable: false),
-    );
-  }
-}
-
-class RaikoActivityInfo {
-  const RaikoActivityInfo({
-    required this.type,
-    required this.actorId,
-    required this.detail,
-    required this.createdAt,
-  });
-
-  final String type;
-  final String actorId;
-  final String detail;
-  final String createdAt;
-
-  factory RaikoActivityInfo.fromJson(Map<String, dynamic> json) {
-    return RaikoActivityInfo(
-      type: json['type'] as String? ?? 'unknown',
-      actorId: json['actorId'] as String? ?? 'unknown',
-      detail: json['detail'] as String? ?? '',
-      createdAt: json['createdAt'] as String? ?? '',
-    );
-  }
-}
-
-class RaikoCommandInfo {
-  const RaikoCommandInfo({
-    required this.commandId,
-    required this.sourceDeviceId,
-    required this.targetAgentId,
-    required this.action,
-    required this.status,
-    required this.createdAt,
-    this.output,
-    this.completedAt,
-  });
-
-  final String commandId;
-  final String sourceDeviceId;
-  final String targetAgentId;
-  final String action;
-  final String status;
-  final String createdAt;
-  final String? output;
-  final String? completedAt;
-
-  factory RaikoCommandInfo.fromJson(Map<String, dynamic> json) {
-    return RaikoCommandInfo(
-      commandId: json['commandId'] as String? ?? 'unknown-command',
-      sourceDeviceId: json['sourceDeviceId'] as String? ?? 'unknown-source',
-      targetAgentId: json['targetAgentId'] as String? ?? 'unknown-target',
-      action: json['action'] as String? ?? 'unknown',
-      status: json['status'] as String? ?? 'pending',
-      createdAt: json['createdAt'] as String? ?? '',
-      output: json['output'] as String?,
-      completedAt: json['completedAt'] as String?,
-    );
-  }
-}
+import '../config/raiko_backend_config.dart';
+import 'raiko_api_client.dart';
+import 'raiko_backend_models.dart';
 
 class RaikoWsClient extends ChangeNotifier {
   RaikoWsClient({
@@ -133,17 +14,24 @@ class RaikoWsClient extends ChangeNotifier {
     required this.deviceName,
     required this.platform,
     required this.kind,
-    this.backendUrl = 'ws://127.0.0.1:8080/ws',
-  });
+    RaikoBackendConfig? initialConfig,
+    RaikoApiClient? apiClient,
+  }) : _config = initialConfig ?? RaikoBackendConfig.defaults,
+       _apiClient =
+           apiClient ??
+           RaikoApiClient(config: initialConfig ?? RaikoBackendConfig.defaults);
 
   final String deviceId;
   final String deviceName;
   final String platform;
   final String kind;
 
-  String backendUrl;
-  String authToken = '';
+  RaikoBackendConfig _config;
+  final RaikoApiClient _apiClient;
   WebSocket? _socket;
+  bool _isConnecting = false;
+  bool _isStarting = false;
+  Completer<void>? _registrationCompleter;
   bool isConnected = false;
   String selectedAgentId = '';
   String? lastError;
@@ -153,6 +41,10 @@ class RaikoWsClient extends ChangeNotifier {
   List<RaikoActivityInfo> activity = const <RaikoActivityInfo>[];
   List<RaikoCommandInfo> commands = const <RaikoCommandInfo>[];
   final List<String> logs = <String>[];
+
+  String get baseHttpUrl => _config.baseHttpUrl;
+  String get websocketUrl => _config.websocketUrl;
+  String get authToken => _config.authToken;
 
   RaikoAgentInfo? get selectedAgent {
     for (final RaikoAgentInfo agent in agents) {
@@ -164,39 +56,75 @@ class RaikoWsClient extends ChangeNotifier {
     return null;
   }
 
-  Future<void> connect([String? url]) async {
-    if (_socket != null) {
+  Future<void> start() async {
+    if (_isStarting) {
+      return;
+    }
+
+    _isStarting = true;
+    try {
+      await connect(force: true);
+      await loadOverview();
+    } finally {
+      _isStarting = false;
+    }
+  }
+
+  Future<void> connect({String? url, bool force = false}) async {
+    if (_isConnecting) {
       return;
     }
 
     if (url != null && url.trim().isNotEmpty) {
-      backendUrl = url.trim();
+      updateWebsocketUrl(url);
     }
 
+    final existingSocket = _socket;
+    if (existingSocket != null && !force) {
+      return;
+    }
+
+    _isConnecting = true;
+
     try {
-      final headers = authToken.trim().isEmpty ? null : <String, dynamic>{'x-raiko-token': authToken.trim()};
-      final socket = await WebSocket.connect(backendUrl, headers: headers);
+      if (existingSocket != null) {
+        _socket = null;
+        isConnected = false;
+        await existingSocket.close();
+      }
+
+      final headers = authToken.trim().isEmpty
+          ? null
+          : <String, dynamic>{'x-raiko-token': authToken.trim()};
+      final socket = await WebSocket.connect(websocketUrl, headers: headers);
       _socket = socket;
-      isConnected = true;
+      isConnected = false;
       lastError = null;
-      _log('Connected to $backendUrl');
-      _send('device.register', <String, Object?>{
-        'deviceId': deviceId,
-        'name': deviceName,
-        'platform': platform,
-        'kind': kind,
-      });
+      _registrationCompleter = Completer<void>();
+      _log('Socket opened to $websocketUrl');
 
       socket.listen(
         _handleMessage,
         onDone: () {
+          if (!identical(_socket, socket)) {
+            return;
+          }
+          _completePendingRegistration(
+            StateError(
+              'Connection closed before device registration completed.',
+            ),
+          );
           _log('Connection closed');
           isConnected = false;
           _socket = null;
           notifyListeners();
         },
         onError: (Object error) {
+          if (!identical(_socket, socket)) {
+            return;
+          }
           final message = 'Socket error: $error';
+          _completePendingRegistration(StateError(message));
           _log(message);
           lastError = message;
           isConnected = false;
@@ -204,12 +132,101 @@ class RaikoWsClient extends ChangeNotifier {
           notifyListeners();
         },
       );
+
+      _send('device.register', <String, Object?>{
+        'deviceId': deviceId,
+        'name': deviceName,
+        'platform': platform,
+        'kind': kind,
+      });
+      await _registrationCompleter!.future.timeout(const Duration(seconds: 5));
+      if (identical(_socket, socket)) {
+        isConnected = true;
+        _log('Connected to $websocketUrl');
+      }
     } catch (error) {
       final message = 'Connection failed: $error';
+      _completePendingRegistration(error);
       _log(message);
       lastError = message;
       isConnected = false;
+      final socket = _socket;
       _socket = null;
+      await socket?.close();
+    } finally {
+      _isConnecting = false;
+    }
+
+    notifyListeners();
+  }
+
+  Future<void> reconnect() async {
+    await connect(force: true);
+  }
+
+  Future<void> loadOverview() async {
+    try {
+      final overview = await _apiClient.fetchOverview();
+      _applyOverview(overview);
+      _log('Overview loaded from $baseHttpUrl');
+    } catch (error) {
+      final message = 'Overview request failed: $error';
+      _log(message);
+      lastError = message;
+    }
+
+    notifyListeners();
+  }
+
+  Future<void> loadDevices() async {
+    try {
+      devices = await _apiClient.fetchDevices();
+      _synchronizeSelectedAgent();
+      _log('Loaded ${devices.length} device(s) from REST');
+    } catch (error) {
+      final message = 'Devices request failed: $error';
+      _log(message);
+      lastError = message;
+    }
+
+    notifyListeners();
+  }
+
+  Future<void> loadAgents() async {
+    try {
+      agents = await _apiClient.fetchAgents();
+      _synchronizeSelectedAgent();
+      _log('Loaded ${agents.length} agent(s) from REST');
+    } catch (error) {
+      final message = 'Agents request failed: $error';
+      _log(message);
+      lastError = message;
+    }
+
+    notifyListeners();
+  }
+
+  Future<void> loadActivity() async {
+    try {
+      activity = await _apiClient.fetchActivity();
+      _log('Loaded ${activity.length} activity event(s) from REST');
+    } catch (error) {
+      final message = 'Activity request failed: $error';
+      _log(message);
+      lastError = message;
+    }
+
+    notifyListeners();
+  }
+
+  Future<void> loadCommands() async {
+    try {
+      commands = await _apiClient.fetchCommands();
+      _log('Loaded ${commands.length} command record(s) from REST');
+    } catch (error) {
+      final message = 'Commands request failed: $error';
+      _log(message);
+      lastError = message;
     }
 
     notifyListeners();
@@ -234,9 +251,11 @@ class RaikoWsClient extends ChangeNotifier {
   }
 
   void disconnect() {
-    _socket?.close();
+    final socket = _socket;
+    _completePendingRegistration(StateError('Connection cancelled.'));
     _socket = null;
     isConnected = false;
+    socket?.close();
     notifyListeners();
   }
 
@@ -245,52 +264,97 @@ class RaikoWsClient extends ChangeNotifier {
     notifyListeners();
   }
 
-  void updateBackendUrl(String nextUrl) {
-    backendUrl = nextUrl.trim();
-    notifyListeners();
+  void updateBaseHttpUrl(String nextUrl) {
+    _updateConfig(_config.copyWith(baseHttpUrl: nextUrl));
+  }
+
+  void updateWebsocketUrl(String nextUrl) {
+    _updateConfig(_config.copyWith(websocketUrl: nextUrl));
   }
 
   void updateAuthToken(String nextToken) {
-    authToken = nextToken.trim();
-    notifyListeners();
+    _updateConfig(_config.copyWith(authToken: nextToken));
+  }
+
+  void updateConnectionSettings({
+    String? baseHttpUrl,
+    String? websocketUrl,
+    String? authToken,
+  }) {
+    _updateConfig(
+      _config.copyWith(
+        baseHttpUrl: baseHttpUrl,
+        websocketUrl: websocketUrl,
+        authToken: authToken,
+      ),
+    );
   }
 
   void _handleMessage(dynamic raw) {
     final json = jsonDecode(raw as String) as Map<String, dynamic>;
     final type = json['type'] as String? ?? 'unknown';
-    final payload = (json['payload'] as Map?)?.cast<String, dynamic>() ?? <String, dynamic>{};
+    final payload =
+        (json['payload'] as Map?)?.cast<String, dynamic>() ??
+        <String, dynamic>{};
 
     switch (type) {
       case 'device.state':
         devices = (payload['devices'] as List<dynamic>? ?? const <dynamic>[])
-            .map((dynamic item) => RaikoDeviceInfo.fromJson((item as Map).cast<String, dynamic>()))
+            .map(
+              (dynamic item) => RaikoDeviceInfo.fromJson(
+                (item as Map).cast<String, dynamic>(),
+              ),
+            )
             .toList(growable: false);
         agents = (payload['agents'] as List<dynamic>? ?? const <dynamic>[])
-            .map((dynamic item) => RaikoAgentInfo.fromJson((item as Map).cast<String, dynamic>()))
+            .map(
+              (dynamic item) => RaikoAgentInfo.fromJson(
+                (item as Map).cast<String, dynamic>(),
+              ),
+            )
             .toList(growable: false);
-        if (agents.isNotEmpty && agents.every((RaikoAgentInfo agent) => agent.id != selectedAgentId)) {
-          selectedAgentId = agents.first.id;
-        }
-        _log('State updated: ${agents.length} agent(s), ${devices.length} client device(s)');
+        _synchronizeSelectedAgent();
+        _log(
+          'State updated: ${agents.length} agent(s), ${devices.length} client device(s)',
+        );
         break;
       case 'activity.snapshot':
         activity = (payload['activity'] as List<dynamic>? ?? const <dynamic>[])
-            .map((dynamic item) => RaikoActivityInfo.fromJson((item as Map).cast<String, dynamic>()))
+            .map(
+              (dynamic item) => RaikoActivityInfo.fromJson(
+                (item as Map).cast<String, dynamic>(),
+              ),
+            )
             .toList(growable: false);
         break;
       case 'command.snapshot':
         commands = (payload['commands'] as List<dynamic>? ?? const <dynamic>[])
-            .map((dynamic item) => RaikoCommandInfo.fromJson((item as Map).cast<String, dynamic>()))
+            .map(
+              (dynamic item) => RaikoCommandInfo.fromJson(
+                (item as Map).cast<String, dynamic>(),
+              ),
+            )
             .toList(growable: false);
         break;
       case 'command.result':
-        _log('Result: ${payload['action']} -> ${payload['status']} (${payload['output']})');
+        _log(
+          'Result: ${payload['action']} -> ${payload['status']} (${payload['output']})',
+        );
         break;
       case 'ack':
+        final completer = _registrationCompleter;
+        if (completer != null && !completer.isCompleted) {
+          completer.complete();
+          _registrationCompleter = null;
+        }
         _log(payload['message'] as String? ?? 'Acknowledged');
         break;
       case 'error':
-        lastError = payload['message'] as String?;
+        final message = payload['message'] as String?;
+        if (message != null) {
+          _completePendingRegistration(StateError(message));
+        }
+        lastError = message;
         _log('Error: ${payload['message']}');
         break;
       default:
@@ -306,10 +370,42 @@ class RaikoWsClient extends ChangeNotifier {
       return;
     }
 
-    socket.add(jsonEncode(<String, Object?>{
-      'type': type,
-      'payload': payload,
-    }));
+    socket.add(jsonEncode(<String, Object?>{'type': type, 'payload': payload}));
+  }
+
+  void _applyOverview(RaikoOverviewSnapshot overview) {
+    devices = overview.devices;
+    agents = overview.agents;
+    activity = overview.activity;
+    commands = overview.commands;
+    _synchronizeSelectedAgent();
+  }
+
+  void _synchronizeSelectedAgent() {
+    if (agents.isEmpty) {
+      selectedAgentId = '';
+      return;
+    }
+
+    if (agents.every((RaikoAgentInfo agent) => agent.id != selectedAgentId)) {
+      selectedAgentId = agents.first.id;
+    }
+  }
+
+  void _updateConfig(RaikoBackendConfig nextConfig) {
+    _config = nextConfig;
+    _apiClient.updateConfig(nextConfig);
+    notifyListeners();
+  }
+
+  void _completePendingRegistration(Object error) {
+    final completer = _registrationCompleter;
+    if (completer == null || completer.isCompleted) {
+      return;
+    }
+
+    completer.completeError(error);
+    _registrationCompleter = null;
   }
 
   void _log(String message) {
