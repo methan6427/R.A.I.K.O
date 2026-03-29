@@ -1,3 +1,6 @@
+export type ConnectionStatus = "online" | "offline";
+export type CommandExecutionStatus = "pending" | "success" | "failed";
+
 export enum ClientEventType {
   DeviceRegister = "device.register",
   AgentRegister = "agent.register",
@@ -10,6 +13,8 @@ export enum ServerEventType {
   Ack = "ack",
   Error = "error",
   DeviceState = "device.state",
+  ActivitySnapshot = "activity.snapshot",
+  CommandSnapshot = "command.snapshot",
   CommandDispatch = "command.dispatch",
   CommandResult = "command.result",
 }
@@ -38,6 +43,7 @@ export interface AgentRegisterPayload {
   agentId: string;
   name: string;
   platform: string;
+  supportedCommands?: AgentCommand[];
 }
 
 export interface CommandSendPayload {
@@ -63,7 +69,7 @@ export interface CommandResultPayload {
 
 export interface HeartbeatPayload {
   clientId: string;
-  status: string;
+  status: ConnectionStatus;
   sentAt: string;
 }
 
@@ -79,16 +85,50 @@ export interface DeviceSummary {
   id: string;
   name: string;
   platform: string;
-  kind?: "mobile" | "desktop";
+  kind: "mobile" | "desktop";
+  status: ConnectionStatus;
+  connectedAt: string;
+  lastSeenAt: string;
 }
 
 export interface AgentSummary {
   id: string;
   name: string;
   platform: string;
+  status: ConnectionStatus;
+  connectedAt: string;
+  lastSeenAt: string;
+  supportedCommands: AgentCommand[];
 }
 
 export interface DeviceStatePayload {
   devices: DeviceSummary[];
   agents: AgentSummary[];
+}
+
+export interface ActivityEntry {
+  type: string;
+  actorId: string;
+  detail: string;
+  createdAt: string;
+}
+
+export interface ActivitySnapshotPayload {
+  activity: ActivityEntry[];
+}
+
+export interface CommandLogEntry {
+  commandId: string;
+  sourceDeviceId: string;
+  targetAgentId: string;
+  action: AgentCommand;
+  status: CommandExecutionStatus;
+  args?: Record<string, unknown>;
+  output?: string;
+  createdAt: string;
+  completedAt?: string;
+}
+
+export interface CommandSnapshotPayload {
+  commands: CommandLogEntry[];
 }

@@ -1,122 +1,202 @@
+import type { IncomingMessage } from "node:http";
+import type { Server } from "node:http";
 import type WebSocket from "ws";
 import { WebSocketServer } from "ws";
 import {
   AgentCommand,
   ClientEventType,
   ServerEventType,
+  type AckPayload,
+  type ActivitySnapshotPayload,
   type AgentRegisterPayload,
   type CommandResultPayload,
   type CommandSendPayload,
+  type CommandSnapshotPayload,
   type DeviceRegisterPayload,
   type DeviceStatePayload,
   type ErrorPayload,
   type HeartbeatPayload,
   type RaikoEnvelope,
 } from "@raiko/shared-types";
-import type { Server } from "node:http";
 import { Logger } from "../core/logger.js";
 import type { ModuleContainer } from "./module-container.js";
 
-const logger = new Logger("ws-gateway");
-
-export function attachWebSocketGateway(server: Server, modules: ModuleContainer): void {
+export function attachWebSocketGateway(
+  server: Server,
+  modules: ModuleContainer,
+  logger: Logger,
+): void {
   const wss = new WebSocketServer({ server, path: "/ws" });
 
-  wss.on("connection", (socket) => {
-    logger.info("Socket connected");
+  wss.on("connection", (socket, request) => {
+    if (!isAuthorizedConnection(modules, request)) {
+      logger.warn("Rejected websocket connection due to invalid token");
+      socket.close(4001, "unauthorized");
+      return;
+    }
+
+    logger.info("Socket connected", {
+      remoteAddress: request.socket.remoteAddress,
+    });
+    void sendSnapshots(socket, modules).catch((error) => {
+      logger.error("Failed to send initial websocket snapshots", serializeError(error));
+      sendError(socket, error instanceof Error ? error.message : "Failed to load snapshots");
+    });
 
     socket.on("message", (raw) => {
-      const text = raw.toString();
-      try {
-        const envelope = JSON.parse(text) as RaikoEnvelope<unknown>;
-        switch (envelope.type) {
-          case ClientEventType.DeviceRegister: {
-            const payload = envelope.payload as DeviceRegisterPayload;
-            modules.registry.registerDevice({
-              id: payload.deviceId,
-              name: payload.name,
-              platform: payload.platform,
-              kind: payload.kind,
-              socket,
-            });
-            modules.activity.track("device.register", payload.deviceId, payload.name);
-            send(socket, ServerEventType.Ack, {
-              message: `Device ${payload.name} registered.`,
-            });
-            broadcastState(modules);
-            break;
-          }
-          case ClientEventType.AgentRegister: {
-            const payload = envelope.payload as AgentRegisterPayload;
-            modules.registry.registerAgent({
-              id: payload.agentId,
-              name: payload.name,
-              platform: payload.platform,
-              socket,
-            });
-            modules.activity.track("agent.register", payload.agentId, payload.name);
-            send(socket, ServerEventType.Ack, {
-              message: `Agent ${payload.name} registered.`,
-            });
-            broadcastState(modules);
-            break;
-          }
-          case ClientEventType.CommandSend: {
-            const payload = envelope.payload as CommandSendPayload;
-            if (!Object.values(AgentCommand).includes(payload.action)) {
-              sendError(socket, `Unsupported command: ${payload.action}`);
-              return;
-            }
-
-            const result = modules.commands.commandDispatcher.dispatch(payload);
-            if (!result.ok) {
-              sendError(socket, result.message);
-            } else {
-              send(socket, ServerEventType.Ack, { message: result.message });
-            }
-            break;
-          }
-          case ClientEventType.CommandResult: {
-            const payload = envelope.payload as CommandResultPayload;
-            modules.commands.commandDispatcher.broadcastResult(payload, socket);
-            break;
-          }
-          case ClientEventType.Heartbeat: {
-            const payload = envelope.payload as HeartbeatPayload;
-            modules.activity.track("heartbeat", payload.clientId, payload.status);
-            break;
-          }
-          default:
-            sendError(socket, `Unknown event type: ${String(envelope.type)}`);
-        }
-      } catch (error) {
+      void handleMessage(modules, socket, raw.toString()).catch((error) => {
+        logger.error("Failed to handle websocket message", serializeError(error));
         sendError(socket, error instanceof Error ? error.message : "Invalid payload");
-      }
+      });
     });
 
     socket.on("close", () => {
-      modules.registry.unregisterSocket(socket);
-      modules.activity.track("socket.close", "unknown", "Socket disconnected");
-      broadcastState(modules);
-      logger.info("Socket disconnected");
+      void handleClose(modules, socket, logger).catch((error) => {
+        logger.error("Failed to persist websocket disconnect", serializeError(error));
+      });
     });
   });
 }
 
-function broadcastState(modules: ModuleContainer): void {
-  const payload: DeviceStatePayload = {
-    devices: modules.devices.listDevices(),
-    agents: modules.devices.listAgents(),
+async function handleMessage(
+  modules: ModuleContainer,
+  socket: WebSocket,
+  text: string,
+): Promise<void> {
+  const envelope = JSON.parse(text) as RaikoEnvelope<unknown>;
+
+  switch (envelope.type) {
+    case ClientEventType.DeviceRegister: {
+      const payload = envelope.payload as DeviceRegisterPayload;
+      await modules.devices.registerDevice(payload, socket);
+      await modules.activity.track("device.register", payload.deviceId, payload.name);
+      sendAck(socket, `Device ${payload.name} registered.`);
+      await broadcastSnapshots(modules);
+      return;
+    }
+    case ClientEventType.AgentRegister: {
+      const payload = envelope.payload as AgentRegisterPayload;
+      await modules.devices.registerAgent(payload, socket);
+      await modules.activity.track("agent.register", payload.agentId, payload.name);
+      sendAck(socket, `Agent ${payload.name} registered.`);
+      await broadcastSnapshots(modules);
+      return;
+    }
+    case ClientEventType.CommandSend: {
+      const payload = envelope.payload as CommandSendPayload;
+      if (!isAgentCommand(payload.action)) {
+        sendError(socket, `Unsupported command: ${String(payload.action)}`);
+        return;
+      }
+
+      const result = await modules.commands.dispatch(payload);
+      if (!result.ok) {
+        sendError(socket, result.message);
+      } else {
+        sendAck(socket, result.message);
+      }
+
+      await broadcastSnapshots(modules);
+      return;
+    }
+    case ClientEventType.CommandResult: {
+      const payload = envelope.payload as CommandResultPayload;
+      await modules.commands.recordResult(payload);
+      broadcastCommandResult(modules, payload, socket);
+      await broadcastSnapshots(modules);
+      return;
+    }
+    case ClientEventType.Heartbeat: {
+      const payload = envelope.payload as HeartbeatPayload;
+      await modules.devices.markHeartbeat(payload.clientId, payload.status, payload.sentAt);
+      await modules.activity.track("heartbeat", payload.clientId, payload.status);
+      await broadcastSnapshots(modules);
+      return;
+    }
+    default:
+      sendError(socket, `Unknown event type: ${String(envelope.type)}`);
+  }
+}
+
+async function handleClose(modules: ModuleContainer, socket: WebSocket, logger: Logger): Promise<void> {
+  const disconnected = modules.registry.unregisterSocket(socket);
+  if (disconnected) {
+    const disconnectedAt = new Date().toISOString();
+    await modules.devices.markDisconnected(disconnected, disconnectedAt);
+    await modules.activity.track(`${disconnected.kind}.disconnect`, disconnected.id, disconnected.name);
+  } else {
+    await modules.activity.track("socket.close", "unknown", "Socket disconnected");
+  }
+
+  await broadcastSnapshots(modules);
+  logger.info("Socket disconnected");
+}
+
+async function broadcastSnapshots(modules: ModuleContainer): Promise<void> {
+  const [devices, agents, activityEntries, commandEntries] = await Promise.all([
+    modules.devices.listDevices(),
+    modules.devices.listAgents(),
+    modules.activity.list(),
+    modules.commands.list(),
+  ]);
+
+  const deviceState: DeviceStatePayload = {
+    devices,
+    agents,
+  };
+  const activity: ActivitySnapshotPayload = {
+    activity: activityEntries,
+  };
+  const commands: CommandSnapshotPayload = {
+    commands: commandEntries,
   };
 
-  const event: RaikoEnvelope<DeviceStatePayload> = {
-    type: ServerEventType.DeviceState,
+  broadcast(modules, ServerEventType.DeviceState, deviceState);
+  broadcast(modules, ServerEventType.ActivitySnapshot, activity);
+  broadcast(modules, ServerEventType.CommandSnapshot, commands);
+}
+
+async function sendSnapshots(socket: WebSocket, modules: ModuleContainer): Promise<void> {
+  const [devices, agents, activityEntries, commands] = await Promise.all([
+    modules.devices.listDevices(),
+    modules.devices.listAgents(),
+    modules.activity.list(),
+    modules.commands.list(),
+  ]);
+
+  send(socket, ServerEventType.DeviceState, {
+    devices,
+    agents,
+  });
+  send(socket, ServerEventType.ActivitySnapshot, {
+    activity: activityEntries,
+  });
+  send(socket, ServerEventType.CommandSnapshot, {
+    commands,
+  });
+}
+
+function broadcastCommandResult(
+  modules: ModuleContainer,
+  payload: CommandResultPayload,
+  except?: WebSocket,
+): void {
+  broadcast(modules, ServerEventType.CommandResult, payload, except);
+}
+
+function broadcast<TPayload>(
+  modules: ModuleContainer,
+  type: ServerEventType,
+  payload: TPayload,
+  except?: WebSocket,
+): void {
+  const serialized = JSON.stringify({
+    type,
     payload,
-  };
+  } satisfies RaikoEnvelope<TPayload>);
 
-  const serialized = JSON.stringify(event);
   for (const socket of modules.registry.listClientSockets()) {
-    if (socket.readyState === socket.OPEN) {
+    if (socket !== except && socket.readyState === socket.OPEN) {
       socket.send(serialized);
     }
   }
@@ -127,7 +207,40 @@ function send<TPayload>(socket: WebSocket, type: ServerEventType, payload: TPayl
   socket.send(JSON.stringify(event));
 }
 
+function sendAck(socket: WebSocket, message: string): void {
+  const payload: AckPayload = { message };
+  send(socket, ServerEventType.Ack, payload);
+}
+
 function sendError(socket: WebSocket, message: string): void {
   const payload: ErrorPayload = { message };
   send(socket, ServerEventType.Error, payload);
+}
+
+function isAuthorizedConnection(modules: ModuleContainer, request: IncomingMessage): boolean {
+  if (!modules.auth.isEnabled) {
+    return true;
+  }
+
+  const url = new URL(request.url ?? "/ws", "ws://localhost");
+  const token = url.searchParams.get("token") ?? request.headers["x-raiko-token"];
+  return modules.auth.validateToken(token);
+}
+
+function isAgentCommand(value: unknown): value is AgentCommand {
+  return Object.values(AgentCommand).includes(value as AgentCommand);
+}
+
+function serializeError(error: unknown): Record<string, unknown> {
+  if (error instanceof Error) {
+    return {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+    };
+  }
+
+  return {
+    error,
+  };
 }

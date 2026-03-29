@@ -12,7 +12,7 @@ import { AgentLogger } from "../logger.js";
 import { handleCommand } from "../commands/command-handlers.js";
 
 export class AgentClient {
-  private socket?: WebSocket;
+  private socket: WebSocket | undefined;
   private heartbeatTimer: NodeJS.Timeout | undefined;
 
   constructor(
@@ -21,7 +21,9 @@ export class AgentClient {
   ) {}
 
   connect(): void {
-    this.socket = new WebSocket(this.config.backendUrl);
+    this.socket = new WebSocket(this.config.backendUrl, {
+      ...(this.config.authToken ? { headers: { "x-raiko-token": this.config.authToken } } : {}),
+    });
 
     this.socket.on("open", () => {
       this.logger.info("Connected to backend", { url: this.config.backendUrl });
@@ -30,28 +32,48 @@ export class AgentClient {
     });
 
     this.socket.on("message", async (raw) => {
-      const envelope = JSON.parse(raw.toString()) as RaikoEnvelope<unknown>;
-      if (envelope.type === ServerEventType.CommandDispatch) {
-        const payload = envelope.payload as CommandDispatchPayload;
-        this.logger.info("Command received", {
-          commandId: payload.commandId,
-          action: payload.action,
-        });
+      const envelope = this.parseEnvelope(raw.toString());
+      if (!envelope) {
+        return;
+      }
 
-        const result = await handleCommand(payload);
-        this.send(ClientEventType.CommandResult, result);
-        this.logger.info("Command processed", {
-          commandId: result.commandId,
-          status: result.status,
-          output: result.output,
-        });
+      switch (envelope.type) {
+        case ServerEventType.Ack:
+          this.logger.info("Backend acknowledged event", envelope.payload as Record<string, unknown>);
+          break;
+        case ServerEventType.Error:
+          this.logger.error("Backend returned error", envelope.payload as Record<string, unknown>);
+          break;
+        case ServerEventType.CommandDispatch: {
+          const payload = envelope.payload as CommandDispatchPayload;
+          this.logger.info("Command received", {
+            commandId: payload.commandId,
+            action: payload.action,
+          });
+
+          const result = await handleCommand(payload, {
+            dryRun: this.config.dryRun,
+          });
+          this.send(ClientEventType.CommandResult, result);
+          this.logger.info("Command processed", {
+            commandId: result.commandId,
+            status: result.status,
+            output: result.output,
+          });
+          break;
+        }
+        default:
+          this.logger.info("Ignoring server event", { type: envelope.type });
       }
     });
 
     this.socket.on("close", () => {
-      this.logger.error("Connection closed. Reconnecting in 5s.");
+      this.logger.error("Connection closed. Reconnecting.", {
+        delayMs: this.config.reconnectDelayMs,
+      });
       this.stopHeartbeat();
-      setTimeout(() => this.connect(), 5000);
+      this.socket = undefined;
+      setTimeout(() => this.connect(), this.config.reconnectDelayMs);
     });
 
     this.socket.on("error", (error) => {
@@ -64,12 +86,14 @@ export class AgentClient {
       agentId: this.config.agentId,
       name: this.config.agentName,
       platform: this.config.platform,
+      supportedCommands: this.config.supportedCommands,
     };
 
     this.send(ClientEventType.AgentRegister, payload);
   }
 
   private startHeartbeat(): void {
+    this.stopHeartbeat();
     this.heartbeatTimer = setInterval(() => {
       const payload: HeartbeatPayload = {
         clientId: this.config.agentId,
@@ -78,7 +102,7 @@ export class AgentClient {
       };
 
       this.send(ClientEventType.Heartbeat, payload);
-    }, 15000);
+    }, this.config.heartbeatIntervalMs);
   }
 
   private stopHeartbeat(): void {
@@ -95,5 +119,16 @@ export class AgentClient {
 
     const event: RaikoEnvelope<TPayload> = { type, payload };
     this.socket.send(JSON.stringify(event));
+  }
+
+  private parseEnvelope(raw: string): RaikoEnvelope<unknown> | undefined {
+    try {
+      return JSON.parse(raw) as RaikoEnvelope<unknown>;
+    } catch (error) {
+      this.logger.error("Failed to parse backend payload", {
+        message: error instanceof Error ? error.message : String(error),
+      });
+      return undefined;
+    }
   }
 }

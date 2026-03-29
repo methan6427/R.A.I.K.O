@@ -8,6 +8,7 @@ const config = loadConfig();
 logger.info("Starting Windows agent", {
   agentId: config.agentId,
   backendUrl: config.backendUrl,
+  dryRun: config.dryRun,
 });
 
 new AgentClient(config, logger).connect();

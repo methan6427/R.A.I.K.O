@@ -7,17 +7,20 @@ class RaikoVoiceOrb extends StatelessWidget {
     required this.label,
     this.size = 160,
     this.isActive = true,
+    this.onPressed,
+    this.tooltip,
   });
 
   final String label;
   final double size;
   final bool isActive;
+  final VoidCallback? onPressed;
+  final String? tooltip;
 
   @override
   Widget build(BuildContext context) {
     final glowColor = isActive ? RaikoColors.accentStrong : RaikoColors.textMuted;
-
-    return TweenAnimationBuilder<double>(
+    final orb = TweenAnimationBuilder<double>(
       tween: Tween<double>(begin: 0.94, end: isActive ? 1.0 : 0.97),
       duration: const Duration(milliseconds: 1800),
       curve: Curves.easeInOut,
@@ -52,6 +55,26 @@ class RaikoVoiceOrb extends StatelessWidget {
                   fontWeight: FontWeight.w800,
                   letterSpacing: 0.6,
                 ),
+          ),
+        ),
+      ),
+    );
+
+    if (onPressed == null) {
+      return orb;
+    }
+
+    return Semantics(
+      button: true,
+      label: tooltip ?? label,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onPressed,
+          customBorder: const CircleBorder(),
+          child: Tooltip(
+            message: tooltip ?? label,
+            child: orb,
           ),
         ),
       ),

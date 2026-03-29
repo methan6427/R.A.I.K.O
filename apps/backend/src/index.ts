@@ -3,7 +3,7 @@ import { createApp } from "./server/create-app.js";
 
 async function bootstrap(): Promise<void> {
   const config = loadConfig();
-  const { app, logger, attachGateway } = await createApp();
+  const { app, logger, attachGateway } = await createApp(config);
 
   attachGateway();
 

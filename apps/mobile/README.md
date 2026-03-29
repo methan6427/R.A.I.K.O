@@ -1,16 +1,21 @@
 # mobile
 
-A new Flutter project.
+R.A.I.K.O mobile client for Android-first remote control workflows.
 
-## Getting Started
+## Current Scope
 
-This project is a starting point for a Flutter application.
+- Home, Devices, Activity, and Settings screens
+- Floating voice relay button
+- WebSocket registration against the R.A.I.K.O backend
+- Touch-first quick command deck for the selected agent
 
-A few resources to get you started if this is your first Flutter project:
+## Development
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+Run from this directory with the standard Flutter workflow:
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+```bash
+flutter pub get
+flutter analyze
+flutter test
+flutter run
+```

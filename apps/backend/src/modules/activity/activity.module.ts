@@ -1,17 +1,15 @@
+import type { ActivityEntry } from "@raiko/shared-types";
 import { Logger } from "../../core/logger.js";
-
-export interface ActivityEntry {
-  type: string;
-  actorId: string;
-  detail: string;
-  createdAt: string;
-}
+import type { ActivityRepository } from "./activity.repository.js";
 
 export class ActivityModule {
-  private readonly logger = new Logger("activity");
-  private readonly entries: ActivityEntry[] = [];
+  constructor(
+    private readonly repository: ActivityRepository,
+    private readonly logger: Logger,
+    private readonly limit = 200,
+  ) {}
 
-  track(type: string, actorId: string, detail: string): ActivityEntry {
+  async track(type: string, actorId: string, detail: string): Promise<ActivityEntry> {
     const entry: ActivityEntry = {
       type,
       actorId,
@@ -19,12 +17,12 @@ export class ActivityModule {
       createdAt: new Date().toISOString(),
     };
 
-    this.entries.unshift(entry);
+    await this.repository.insert(entry);
     this.logger.info("Activity recorded", { ...entry });
     return entry;
   }
 
-  list(): ActivityEntry[] {
-    return [...this.entries];
+  async list(): Promise<ActivityEntry[]> {
+    return this.repository.listRecent(this.limit);
   }
 }

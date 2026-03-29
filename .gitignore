@@ -1,13 +1,28 @@
 .dart_tool/
-.idea/
 .flutter-plugins
 .flutter-plugins-dependencies
 .packages
 .pub/
 .pub-cache/
+.idea/
+.metadata
+.vscode/
 build/
-node_modules/
-dist/
 coverage/
+dist/
+node_modules/
 *.iml
+*.log
+*.tmp
+.env
+**/.env
 pubspec.lock
+
+# Flutter and Android local machine files
+**/android/.gradle/
+**/android/local.properties
+**/windows/flutter/ephemeral/
+
+# General OS/editor noise
+.DS_Store
+Thumbs.db

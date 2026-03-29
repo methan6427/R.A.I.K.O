@@ -30,23 +30,30 @@ class RaikoButton extends StatelessWidget {
     final side = isSecondary
         ? const BorderSide(color: RaikoColors.borderStrong)
         : BorderSide(color: background.withValues(alpha: 0.2));
-    final child = FilledButton.icon(
-      onPressed: onPressed,
-      style: FilledButton.styleFrom(
-        backgroundColor: background,
-        disabledBackgroundColor: RaikoColors.backgroundRaised,
-        foregroundColor: foreground,
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
-          side: side,
-        ),
-        elevation: 0,
-        shadowColor: Colors.transparent,
+    final style = FilledButton.styleFrom(
+      backgroundColor: background,
+      disabledBackgroundColor: RaikoColors.backgroundRaised,
+      foregroundColor: foreground,
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: side,
       ),
-      icon: icon == null ? const SizedBox.shrink() : Icon(icon, size: 18),
-      label: Text(label),
+      elevation: 0,
+      shadowColor: Colors.transparent,
     );
+    final child = icon == null
+        ? FilledButton(
+            onPressed: onPressed,
+            style: style,
+            child: Text(label),
+          )
+        : FilledButton.icon(
+            onPressed: onPressed,
+            style: style,
+            icon: Icon(icon, size: 18),
+            label: Text(label),
+          );
 
     if (!expand) {
       return child;

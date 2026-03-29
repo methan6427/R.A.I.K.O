@@ -1,39 +1,33 @@
-<!--
-This README describes the package. If you publish this package to pub.dev,
-this README's contents appear on the landing page for your package.
+# raiko_ui
 
-For information about how to write a good package README, see the guide for
-[writing package pages](https://dart.dev/tools/pub/writing-package-pages).
+Shared Flutter widgets for the R.A.I.K.O clients.
 
-For general information about developing packages, see the Dart guide for
-[creating packages](https://dart.dev/guides/libraries/create-packages)
-and the Flutter guide for
-[developing packages and plugins](https://flutter.dev/to/develop-packages).
--->
+## Included Widgets
 
-TODO: Put a short description of the package here that helps potential users
-know whether this package might be useful for them.
-
-## Features
-
-TODO: List what your package can do. Maybe include images, gifs, or videos.
-
-## Getting started
-
-TODO: List prerequisites and provide or point to information on how to
-start using the package.
+- `RaikoScaffold` for the shared gradient shell and responsive content frame
+- `RaikoCard` for elevated content panels
+- `RaikoButton` for primary, secondary, and danger actions
+- `RaikoHeader` for page-level titles and eyebrow metadata
+- `RaikoDeviceTile` for connected device summaries
+- `RaikoStatusBadge` for compact online and offline state
+- `RaikoVoiceOrb` for the branded voice trigger and status centerpiece
 
 ## Usage
 
-TODO: Include short and useful examples for package users. Add longer examples
-to `/example` folder.
-
 ```dart
-const like = 'sample';
+import 'package:raiko_ui/raiko_ui.dart';
+import 'package:shared_theme/shared_theme.dart';
+
+MaterialApp(
+  theme: buildRaikoTheme(),
+  home: const RaikoScaffold(
+    body: Center(
+      child: RaikoCard(
+        child: Text('R.A.I.K.O'),
+      ),
+    ),
+  ),
+);
 ```
 
-## Additional information
-
-TODO: Tell users more about the package: where to find more information, how to
-contribute to the package, how to file issues, what response they can expect
-from the package authors, and more.
+Use this package together with `shared_theme`.

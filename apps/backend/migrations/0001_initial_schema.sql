@@ -1,4 +1,4 @@
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
   email TEXT NOT NULL UNIQUE,
   display_name TEXT NOT NULL,
@@ -6,13 +6,13 @@ CREATE TABLE users (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE app_settings (
+CREATE TABLE IF NOT EXISTS app_settings (
   key TEXT PRIMARY KEY,
   value JSONB NOT NULL,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE devices (
+CREATE TABLE IF NOT EXISTS devices (
   id TEXT PRIMARY KEY,
   user_id TEXT REFERENCES users (id) ON DELETE SET NULL,
   name TEXT NOT NULL,
@@ -26,7 +26,10 @@ CREATE TABLE devices (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE agents (
+CREATE INDEX IF NOT EXISTS devices_status_idx ON devices (status);
+CREATE INDEX IF NOT EXISTS devices_last_seen_at_idx ON devices (last_seen_at DESC);
+
+CREATE TABLE IF NOT EXISTS agents (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
   platform TEXT NOT NULL,
@@ -39,7 +42,10 @@ CREATE TABLE agents (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE commands (
+CREATE INDEX IF NOT EXISTS agents_status_idx ON agents (status);
+CREATE INDEX IF NOT EXISTS agents_last_seen_at_idx ON agents (last_seen_at DESC);
+
+CREATE TABLE IF NOT EXISTS commands (
   command_id TEXT PRIMARY KEY,
   source_device_id TEXT NOT NULL,
   target_agent_id TEXT NOT NULL,
@@ -50,7 +56,10 @@ CREATE TABLE commands (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE command_results (
+CREATE INDEX IF NOT EXISTS commands_created_at_idx ON commands (created_at DESC);
+CREATE INDEX IF NOT EXISTS commands_status_idx ON commands (status);
+
+CREATE TABLE IF NOT EXISTS command_results (
   command_id TEXT PRIMARY KEY REFERENCES commands (command_id) ON DELETE CASCADE,
   agent_id TEXT NOT NULL,
   action TEXT NOT NULL,
@@ -61,10 +70,14 @@ CREATE TABLE command_results (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE activity_logs (
+CREATE INDEX IF NOT EXISTS command_results_completed_at_idx ON command_results (completed_at DESC);
+
+CREATE TABLE IF NOT EXISTS activity_logs (
   id BIGSERIAL PRIMARY KEY,
   actor_id TEXT NOT NULL,
   type TEXT NOT NULL,
   detail TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+CREATE INDEX IF NOT EXISTS activity_logs_created_at_idx ON activity_logs (created_at DESC);

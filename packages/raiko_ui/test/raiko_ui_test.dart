@@ -29,4 +29,29 @@ void main() {
 
     expect(find.text('System Online'), findsOneWidget);
   });
+
+  testWidgets('RaikoVoiceOrb can be interactive', (WidgetTester tester) async {
+    var tapped = false;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildRaikoTheme(),
+        home: Scaffold(
+          body: Center(
+            child: RaikoVoiceOrb(
+              label: 'Voice',
+              onPressed: () {
+                tapped = true;
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byType(RaikoVoiceOrb));
+    await tester.pump();
+
+    expect(tapped, isTrue);
+  });
 }

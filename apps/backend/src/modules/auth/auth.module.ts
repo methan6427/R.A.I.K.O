@@ -1,9 +1,19 @@
 export class AuthModule {
-  validateToken(token?: string): boolean {
-    if (!token) {
+  constructor(private readonly expectedToken?: string) {}
+
+  validateToken(token?: string | string[]): boolean {
+    if (!this.expectedToken) {
       return true;
     }
 
-    return token.length >= 8;
+    if (Array.isArray(token)) {
+      return token.includes(this.expectedToken);
+    }
+
+    return token === this.expectedToken;
+  }
+
+  get isEnabled(): boolean {
+    return Boolean(this.expectedToken);
   }
 }

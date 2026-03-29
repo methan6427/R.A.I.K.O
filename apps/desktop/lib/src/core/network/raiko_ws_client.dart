@@ -1,64 +1,229 @@
 import 'dart:convert';
 import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 
+class RaikoDeviceInfo {
+  const RaikoDeviceInfo({
+    required this.id,
+    required this.name,
+    required this.platform,
+    required this.kind,
+    required this.status,
+    required this.connectedAt,
+    required this.lastSeenAt,
+  });
+
+  final String id;
+  final String name;
+  final String platform;
+  final String kind;
+  final String status;
+  final String connectedAt;
+  final String lastSeenAt;
+
+  factory RaikoDeviceInfo.fromJson(Map<String, dynamic> json) {
+    return RaikoDeviceInfo(
+      id: json['id'] as String? ?? 'unknown-device',
+      name: json['name'] as String? ?? 'Unknown Device',
+      platform: json['platform'] as String? ?? 'unknown',
+      kind: json['kind'] as String? ?? 'desktop',
+      status: json['status'] as String? ?? 'offline',
+      connectedAt: json['connectedAt'] as String? ?? '',
+      lastSeenAt: json['lastSeenAt'] as String? ?? '',
+    );
+  }
+}
+
+class RaikoAgentInfo {
+  const RaikoAgentInfo({
+    required this.id,
+    required this.name,
+    required this.platform,
+    required this.status,
+    required this.connectedAt,
+    required this.lastSeenAt,
+    required this.supportedCommands,
+  });
+
+  final String id;
+  final String name;
+  final String platform;
+  final String status;
+  final String connectedAt;
+  final String lastSeenAt;
+  final List<String> supportedCommands;
+
+  factory RaikoAgentInfo.fromJson(Map<String, dynamic> json) {
+    return RaikoAgentInfo(
+      id: json['id'] as String? ?? 'unknown-agent',
+      name: json['name'] as String? ?? 'Unknown Agent',
+      platform: json['platform'] as String? ?? 'unknown',
+      status: json['status'] as String? ?? 'offline',
+      connectedAt: json['connectedAt'] as String? ?? '',
+      lastSeenAt: json['lastSeenAt'] as String? ?? '',
+      supportedCommands: (json['supportedCommands'] as List<dynamic>? ?? const <dynamic>[])
+          .map((dynamic item) => item.toString())
+          .toList(growable: false),
+    );
+  }
+}
+
+class RaikoActivityInfo {
+  const RaikoActivityInfo({
+    required this.type,
+    required this.actorId,
+    required this.detail,
+    required this.createdAt,
+  });
+
+  final String type;
+  final String actorId;
+  final String detail;
+  final String createdAt;
+
+  factory RaikoActivityInfo.fromJson(Map<String, dynamic> json) {
+    return RaikoActivityInfo(
+      type: json['type'] as String? ?? 'unknown',
+      actorId: json['actorId'] as String? ?? 'unknown',
+      detail: json['detail'] as String? ?? '',
+      createdAt: json['createdAt'] as String? ?? '',
+    );
+  }
+}
+
+class RaikoCommandInfo {
+  const RaikoCommandInfo({
+    required this.commandId,
+    required this.sourceDeviceId,
+    required this.targetAgentId,
+    required this.action,
+    required this.status,
+    required this.createdAt,
+    this.output,
+    this.completedAt,
+  });
+
+  final String commandId;
+  final String sourceDeviceId;
+  final String targetAgentId;
+  final String action;
+  final String status;
+  final String createdAt;
+  final String? output;
+  final String? completedAt;
+
+  factory RaikoCommandInfo.fromJson(Map<String, dynamic> json) {
+    return RaikoCommandInfo(
+      commandId: json['commandId'] as String? ?? 'unknown-command',
+      sourceDeviceId: json['sourceDeviceId'] as String? ?? 'unknown-source',
+      targetAgentId: json['targetAgentId'] as String? ?? 'unknown-target',
+      action: json['action'] as String? ?? 'unknown',
+      status: json['status'] as String? ?? 'pending',
+      createdAt: json['createdAt'] as String? ?? '',
+      output: json['output'] as String?,
+      completedAt: json['completedAt'] as String?,
+    );
+  }
+}
+
 class RaikoWsClient extends ChangeNotifier {
-  RaikoWsClient({required this.deviceId, required this.deviceName, required this.platform, required this.kind});
+  RaikoWsClient({
+    required this.deviceId,
+    required this.deviceName,
+    required this.platform,
+    required this.kind,
+    this.backendUrl = 'ws://127.0.0.1:8080/ws',
+  });
 
   final String deviceId;
   final String deviceName;
   final String platform;
   final String kind;
 
+  String backendUrl;
+  String authToken = '';
   WebSocket? _socket;
   bool isConnected = false;
-  String selectedAgentId = 'agent-win-01';
-  List<String> agents = const <String>[];
+  String selectedAgentId = '';
+  String? lastError;
+
+  List<RaikoDeviceInfo> devices = const <RaikoDeviceInfo>[];
+  List<RaikoAgentInfo> agents = const <RaikoAgentInfo>[];
+  List<RaikoActivityInfo> activity = const <RaikoActivityInfo>[];
+  List<RaikoCommandInfo> commands = const <RaikoCommandInfo>[];
   final List<String> logs = <String>[];
 
-  Future<void> connect([String url = 'ws://127.0.0.1:8080/ws']) async {
+  RaikoAgentInfo? get selectedAgent {
+    for (final RaikoAgentInfo agent in agents) {
+      if (agent.id == selectedAgentId) {
+        return agent;
+      }
+    }
+
+    return null;
+  }
+
+  Future<void> connect([String? url]) async {
     if (_socket != null) {
       return;
     }
 
-    final socket = await WebSocket.connect(url);
-    _socket = socket;
-    isConnected = true;
-    _log('Connected to $url');
-    _send('device.register', {
-      'deviceId': deviceId,
-      'name': deviceName,
-      'platform': platform,
-      'kind': kind,
-    });
+    if (url != null && url.trim().isNotEmpty) {
+      backendUrl = url.trim();
+    }
 
-    socket.listen(
-      _handleMessage,
-      onDone: () {
-        _log('Connection closed');
-        isConnected = false;
-        _socket = null;
-        notifyListeners();
-      },
-      onError: (Object error) {
-        _log('Socket error: $error');
-        isConnected = false;
-        _socket = null;
-        notifyListeners();
-      },
-    );
+    try {
+      final headers = authToken.trim().isEmpty ? null : <String, dynamic>{'x-raiko-token': authToken.trim()};
+      final socket = await WebSocket.connect(backendUrl, headers: headers);
+      _socket = socket;
+      isConnected = true;
+      lastError = null;
+      _log('Connected to $backendUrl');
+      _send('device.register', <String, Object?>{
+        'deviceId': deviceId,
+        'name': deviceName,
+        'platform': platform,
+        'kind': kind,
+      });
+
+      socket.listen(
+        _handleMessage,
+        onDone: () {
+          _log('Connection closed');
+          isConnected = false;
+          _socket = null;
+          notifyListeners();
+        },
+        onError: (Object error) {
+          final message = 'Socket error: $error';
+          _log(message);
+          lastError = message;
+          isConnected = false;
+          _socket = null;
+          notifyListeners();
+        },
+      );
+    } catch (error) {
+      final message = 'Connection failed: $error';
+      _log(message);
+      lastError = message;
+      isConnected = false;
+      _socket = null;
+    }
 
     notifyListeners();
   }
 
   void sendCommand(String action, {Map<String, Object?>? args}) {
-    if (_socket == null) {
-      _log('Cannot send command while disconnected');
+    final socket = _socket;
+    if (socket == null || selectedAgentId.isEmpty) {
+      _log('Cannot send $action without an active connection and target agent');
       return;
     }
 
     final commandId = 'cmd-${DateTime.now().millisecondsSinceEpoch}';
-    _send('command.send', {
+    _send('command.send', <String, Object?>{
       'commandId': commandId,
       'sourceDeviceId': deviceId,
       'targetAgentId': selectedAgentId,
@@ -80,26 +245,56 @@ class RaikoWsClient extends ChangeNotifier {
     notifyListeners();
   }
 
+  void updateBackendUrl(String nextUrl) {
+    backendUrl = nextUrl.trim();
+    notifyListeners();
+  }
+
+  void updateAuthToken(String nextToken) {
+    authToken = nextToken.trim();
+    notifyListeners();
+  }
+
   void _handleMessage(dynamic raw) {
     final json = jsonDecode(raw as String) as Map<String, dynamic>;
     final type = json['type'] as String? ?? 'unknown';
     final payload = (json['payload'] as Map?)?.cast<String, dynamic>() ?? <String, dynamic>{};
 
-    if (type == 'device.state') {
-      final nextAgents = (payload['agents'] as List<dynamic>? ?? const <dynamic>[])
-          .map((dynamic item) => (item as Map<String, dynamic>)['id'] as String)
-          .toList(growable: false);
-      agents = nextAgents;
-      if (agents.isNotEmpty && !agents.contains(selectedAgentId)) {
-        selectedAgentId = agents.first;
-      }
-      _log('State updated: ${agents.length} agent(s) online');
-    } else if (type == 'command.result') {
-      _log('Result: ${payload['action']} -> ${payload['status']} (${payload['output']})');
-    } else if (type == 'ack') {
-      _log(payload['message'] as String? ?? 'Acknowledged');
-    } else if (type == 'error') {
-      _log('Error: ${payload['message']}');
+    switch (type) {
+      case 'device.state':
+        devices = (payload['devices'] as List<dynamic>? ?? const <dynamic>[])
+            .map((dynamic item) => RaikoDeviceInfo.fromJson((item as Map).cast<String, dynamic>()))
+            .toList(growable: false);
+        agents = (payload['agents'] as List<dynamic>? ?? const <dynamic>[])
+            .map((dynamic item) => RaikoAgentInfo.fromJson((item as Map).cast<String, dynamic>()))
+            .toList(growable: false);
+        if (agents.isNotEmpty && agents.every((RaikoAgentInfo agent) => agent.id != selectedAgentId)) {
+          selectedAgentId = agents.first.id;
+        }
+        _log('State updated: ${agents.length} agent(s), ${devices.length} client device(s)');
+        break;
+      case 'activity.snapshot':
+        activity = (payload['activity'] as List<dynamic>? ?? const <dynamic>[])
+            .map((dynamic item) => RaikoActivityInfo.fromJson((item as Map).cast<String, dynamic>()))
+            .toList(growable: false);
+        break;
+      case 'command.snapshot':
+        commands = (payload['commands'] as List<dynamic>? ?? const <dynamic>[])
+            .map((dynamic item) => RaikoCommandInfo.fromJson((item as Map).cast<String, dynamic>()))
+            .toList(growable: false);
+        break;
+      case 'command.result':
+        _log('Result: ${payload['action']} -> ${payload['status']} (${payload['output']})');
+        break;
+      case 'ack':
+        _log(payload['message'] as String? ?? 'Acknowledged');
+        break;
+      case 'error':
+        lastError = payload['message'] as String?;
+        _log('Error: ${payload['message']}');
+        break;
+      default:
+        break;
     }
 
     notifyListeners();
@@ -111,14 +306,16 @@ class RaikoWsClient extends ChangeNotifier {
       return;
     }
 
-    socket.add(jsonEncode({'type': type, 'payload': payload}));
+    socket.add(jsonEncode(<String, Object?>{
+      'type': type,
+      'payload': payload,
+    }));
   }
 
   void _log(String message) {
     logs.insert(0, '${DateTime.now().toIso8601String()}  $message');
-    if (logs.length > 20) {
+    if (logs.length > 40) {
       logs.removeLast();
     }
-    notifyListeners();
   }
 }

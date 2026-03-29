@@ -11,6 +11,9 @@ class RaikoScaffold extends StatelessWidget {
     this.padding,
     this.alignment = Alignment.topCenter,
     this.bottomBar,
+    this.bottomNavigationBar,
+    this.floatingActionButton,
+    this.floatingActionButtonLocation,
   });
 
   final Widget body;
@@ -18,10 +21,17 @@ class RaikoScaffold extends StatelessWidget {
   final EdgeInsetsGeometry? padding;
   final Alignment alignment;
   final Widget? bottomBar;
+  final Widget? bottomNavigationBar;
+  final Widget? floatingActionButton;
+  final FloatingActionButtonLocation? floatingActionButtonLocation;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBody: bottomNavigationBar != null,
+      floatingActionButton: floatingActionButton,
+      floatingActionButtonLocation: floatingActionButtonLocation,
+      bottomNavigationBar: bottomNavigationBar,
       body: DecoratedBox(
         decoration: const BoxDecoration(gradient: RaikoColors.heroGradient),
         child: Stack(
