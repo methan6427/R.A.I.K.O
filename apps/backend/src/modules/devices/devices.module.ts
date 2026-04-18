@@ -97,11 +97,11 @@ export class DevicesModule {
     await this.repository.markAgentDisconnected(disconnected.id, at);
   }
 
-  async listDevices() {
-    return this.repository.listOnlineDevices();
+  listDevices() {
+    return this.registry.listDevices();
   }
 
-  async listAgents() {
-    return this.repository.listOnlineAgents();
+  listAgents() {
+    return this.registry.listAgents();
   }
 }

@@ -31,6 +31,10 @@ class RaikoWsClient extends ChangeNotifier {
   WebSocket? _socket;
   bool _isConnecting = false;
   bool _isStarting = false;
+  bool _disposed = false;
+  bool _autoReconnect = true;
+  int _reconnectAttempts = 0;
+  Timer? _reconnectTimer;
   Completer<void>? _registrationCompleter;
   bool isConnected = false;
   String selectedAgentId = '';
@@ -62,6 +66,7 @@ class RaikoWsClient extends ChangeNotifier {
     }
 
     _isStarting = true;
+    _autoReconnect = true;
     try {
       await connect(force: true);
       await loadOverview();
@@ -118,6 +123,7 @@ class RaikoWsClient extends ChangeNotifier {
           isConnected = false;
           _socket = null;
           notifyListeners();
+          _scheduleReconnect();
         },
         onError: (Object error) {
           if (!identical(_socket, socket)) {
@@ -130,6 +136,7 @@ class RaikoWsClient extends ChangeNotifier {
           isConnected = false;
           _socket = null;
           notifyListeners();
+          _scheduleReconnect();
         },
       );
 
@@ -142,6 +149,7 @@ class RaikoWsClient extends ChangeNotifier {
       await _registrationCompleter!.future.timeout(const Duration(seconds: 5));
       if (identical(_socket, socket)) {
         isConnected = true;
+        _reconnectAttempts = 0;
         _log('Connected to $websocketUrl');
       }
     } catch (error) {
@@ -161,6 +169,8 @@ class RaikoWsClient extends ChangeNotifier {
   }
 
   Future<void> reconnect() async {
+    _autoReconnect = true;
+    _reconnectAttempts = 0;
     await connect(force: true);
   }
 
@@ -251,12 +261,25 @@ class RaikoWsClient extends ChangeNotifier {
   }
 
   void disconnect() {
+    _reconnectTimer?.cancel();
+    _reconnectTimer = null;
+    _autoReconnect = false;
     final socket = _socket;
     _completePendingRegistration(StateError('Connection cancelled.'));
     _socket = null;
     isConnected = false;
+    _reconnectAttempts = 0;
     socket?.close();
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    _reconnectTimer?.cancel();
+    _reconnectTimer = null;
+    disconnect();
+    super.dispose();
   }
 
   void updateSelectedAgent(String agentId) {
@@ -406,6 +429,29 @@ class RaikoWsClient extends ChangeNotifier {
 
     completer.completeError(error);
     _registrationCompleter = null;
+  }
+
+  void _scheduleReconnect() {
+    if (_disposed || !_autoReconnect) {
+      return;
+    }
+
+    final delay = _reconnectDelay(_reconnectAttempts);
+    _reconnectAttempts++;
+    _log('Reconnecting in ${delay.inSeconds}s (attempt $_reconnectAttempts)');
+
+    _reconnectTimer?.cancel();
+    _reconnectTimer = Timer(delay, () {
+      if (!_disposed && _autoReconnect) {
+        connect(force: true);
+      }
+    });
+  }
+
+  static Duration _reconnectDelay(int attempt) {
+    // Exponential backoff: 2s, 4s, 8s, 16s, capped at 30s
+    final seconds = (2 << attempt).clamp(2, 30);
+    return Duration(seconds: seconds);
   }
 
   void _log(String message) {

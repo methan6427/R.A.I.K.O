@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_theme/shared_theme.dart';
 
-class RaikoVoiceOrb extends StatelessWidget {
+class RaikoVoiceOrb extends StatefulWidget {
   const RaikoVoiceOrb({
     super.key,
     required this.label,
@@ -18,62 +18,124 @@ class RaikoVoiceOrb extends StatelessWidget {
   final String? tooltip;
 
   @override
+  State<RaikoVoiceOrb> createState() => _RaikoVoiceOrbState();
+}
+
+class _RaikoVoiceOrbState extends State<RaikoVoiceOrb>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _pulseAnimation;
+  late final Animation<double> _glowAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2400),
+    );
+    _pulseAnimation = Tween<double>(begin: 0.95, end: 1.05).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+    _glowAnimation = Tween<double>(begin: 0.3, end: 0.7).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+    if (widget.isActive) {
+      _controller.repeat(reverse: true);
+    }
+  }
+
+  @override
+  void didUpdateWidget(RaikoVoiceOrb oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isActive && !_controller.isAnimating) {
+      _controller.repeat(reverse: true);
+    } else if (!widget.isActive && _controller.isAnimating) {
+      _controller.stop();
+      _controller.value = 0.0;
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final glowColor = isActive ? RaikoColors.accentStrong : RaikoColors.textMuted;
-    final orb = TweenAnimationBuilder<double>(
-      tween: Tween<double>(begin: 0.94, end: isActive ? 1.0 : 0.97),
-      duration: const Duration(milliseconds: 1800),
-      curve: Curves.easeInOut,
-      builder: (BuildContext context, double value, Widget? child) {
-        return Transform.scale(scale: value, child: child);
-      },
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: RadialGradient(
-            colors: [
-              Colors.white,
-              isActive ? RaikoColors.accentStrong : RaikoColors.accent,
-              const Color(0xFF14233F),
-            ],
-            stops: const [0.0, 0.22, 1.0],
-          ),
-          border: Border.all(color: glowColor.withValues(alpha: 0.45)),
-          boxShadow: [
-            BoxShadow(color: glowColor.withValues(alpha: 0.42), blurRadius: 42, spreadRadius: 6),
-            const BoxShadow(color: Color(0x66000000), blurRadius: 22, offset: Offset(0, 18)),
-          ],
-        ),
-        child: Center(
-          child: Text(
-            label,
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: RaikoColors.backgroundDeep,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0.6,
+    final glowColor =
+        widget.isActive ? RaikoColors.accentStrong : RaikoColors.textMuted;
+
+    final orb = AnimatedBuilder(
+      animation: _controller,
+      builder: (BuildContext context, Widget? child) {
+        return Transform.scale(
+          scale: widget.isActive ? _pulseAnimation.value : 0.97,
+          child: Container(
+            width: widget.size,
+            height: widget.size,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: [
+                  Colors.white.withValues(alpha: 0.9),
+                  widget.isActive
+                      ? RaikoColors.accentStrong
+                      : RaikoColors.accent.withValues(alpha: 0.5),
+                  const Color(0xFF14233F),
+                ],
+                stops: const [0.0, 0.25, 1.0],
+              ),
+              border: Border.all(
+                color: glowColor.withValues(alpha: 0.5),
+                width: 1.5,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: glowColor.withValues(
+                    alpha:
+                        widget.isActive ? _glowAnimation.value : 0.15,
+                  ),
+                  blurRadius: widget.isActive ? 48 : 20,
+                  spreadRadius: widget.isActive ? 8 : 2,
                 ),
+                const BoxShadow(
+                  color: Color(0x44000000),
+                  blurRadius: 18,
+                  offset: Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Center(child: child),
           ),
-        ),
+        );
+      },
+      child: Text(
+        widget.label,
+        textAlign: TextAlign.center,
+        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              color: RaikoColors.backgroundDeep,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.6,
+            ),
       ),
     );
 
-    if (onPressed == null) {
+    if (widget.onPressed == null) {
       return orb;
     }
 
     return Semantics(
       button: true,
-      label: tooltip ?? label,
+      label: widget.tooltip ?? widget.label,
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: onPressed,
+          onTap: widget.onPressed,
           customBorder: const CircleBorder(),
           child: Tooltip(
-            message: tooltip ?? label,
+            message: widget.tooltip ?? widget.label,
             child: orb,
           ),
         ),
