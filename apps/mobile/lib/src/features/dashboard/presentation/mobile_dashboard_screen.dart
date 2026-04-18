@@ -5,7 +5,9 @@ import 'package:raiko_ui/raiko_ui.dart';
 import 'package:shared_theme/shared_theme.dart';
 
 import '../../../core/config/raiko_backend_config.dart';
+import '../../../core/identity/raiko_identity.dart';
 import '../../../core/network/raiko_ws_client.dart';
+import '../../../core/settings/raiko_settings_store.dart';
 import 'activity_tab.dart';
 import 'devices_tab.dart';
 import 'home_tab.dart';
@@ -14,10 +16,14 @@ import 'settings_tab.dart';
 class MobileDashboardScreen extends StatefulWidget {
   const MobileDashboardScreen({
     super.key,
+    required this.identity,
+    required this.settings,
     this.initialBackendConfig = RaikoBackendConfig.defaults,
     this.autoStartBackend = true,
   });
 
+  final RaikoIdentity identity;
+  final RaikoSettingsStore settings;
   final RaikoBackendConfig initialBackendConfig;
   final bool autoStartBackend;
 
@@ -31,14 +37,16 @@ class _MobileDashboardScreenState extends State<MobileDashboardScreen> {
   late final TextEditingController websocketUrlController;
   late final TextEditingController authTokenController;
   int currentIndex = 0;
+  String? _lastShownError;
+  DateTime? _lastShownResultAt;
 
   @override
   void initState() {
     super.initState();
     client = RaikoWsClient(
-      deviceId: 'mobile-android-01',
-      deviceName: 'RAIKO Mobile',
-      platform: 'android',
+      deviceId: widget.identity.deviceId,
+      deviceName: widget.identity.deviceName,
+      platform: widget.identity.platform,
       kind: 'mobile',
       initialConfig: widget.initialBackendConfig,
     )..addListener(_onChanged);
@@ -74,15 +82,92 @@ class _MobileDashboardScreenState extends State<MobileDashboardScreen> {
 
     if (mounted) {
       setState(() {});
+      _maybeShowSnackbars();
     }
   }
 
-  Future<void> _connect() async {
+  void _maybeShowSnackbars() {
+    final currentError = client.lastError;
+    if (currentError != null && currentError != _lastShownError) {
+      _lastShownError = currentError;
+      _showSnack(
+        currentError,
+        color: RaikoColors.danger,
+        icon: Icons.error_outline_rounded,
+      );
+    } else if (currentError == null) {
+      _lastShownError = null;
+    }
+
+    final result = client.lastCommandResult;
+    if (result != null && result.receivedAt != _lastShownResultAt) {
+      _lastShownResultAt = result.receivedAt;
+      final isOk = result.status.toLowerCase() == 'success';
+      final detail = result.output.trim().isEmpty
+          ? ''
+          : ' \u2022 ${result.output.trim()}';
+      _showSnack(
+        '${result.action.toUpperCase()} \u2192 ${result.status}$detail',
+        color: isOk ? RaikoColors.success : RaikoColors.danger,
+        icon: isOk
+            ? Icons.check_circle_outline_rounded
+            : Icons.error_outline_rounded,
+      );
+    }
+  }
+
+  void _showSnack(
+    String message, {
+    required Color color,
+    required IconData icon,
+  }) {
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    if (messenger == null) {
+      return;
+    }
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        duration: const Duration(seconds: 4),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: color.withValues(alpha: 0.94),
+        margin: const EdgeInsets.fromLTRB(12, 0, 12, 96),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+        ),
+        content: Row(
+          children: [
+            Icon(icon, color: Colors.white, size: 18),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                message,
+                style: const TextStyle(color: Colors.white),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _applyAndPersistConnectionSettings() async {
     client.updateConnectionSettings(
       baseHttpUrl: baseHttpUrlController.text,
       websocketUrl: websocketUrlController.text,
       authToken: authTokenController.text,
     );
+    await widget.settings.save(
+      RaikoBackendConfig(
+        baseHttpUrl: client.baseHttpUrl,
+        websocketUrl: client.websocketUrl,
+        authToken: client.authToken,
+      ),
+    );
+  }
+
+  Future<void> _connect() async {
+    await _applyAndPersistConnectionSettings();
     await client.reconnect();
     await client.loadOverview();
   }
@@ -197,11 +282,7 @@ class _MobileDashboardScreenState extends State<MobileDashboardScreen> {
         websocketUrlController: websocketUrlController,
         authTokenController: authTokenController,
         onApplyConnectionSettings: () {
-          client.updateConnectionSettings(
-            baseHttpUrl: baseHttpUrlController.text,
-            websocketUrl: websocketUrlController.text,
-            authToken: authTokenController.text,
-          );
+          unawaited(_applyAndPersistConnectionSettings());
         },
         onConnect: _connect,
       ),

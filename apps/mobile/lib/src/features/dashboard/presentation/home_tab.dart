@@ -110,13 +110,20 @@ class _SessionCard extends StatelessWidget {
             children: [
               Expanded(
                 child: RaikoButton(
-                  label: client.isConnected ? 'Disconnect' : 'Connect',
-                  icon: client.isConnected
-                      ? Icons.link_off_rounded
-                      : Icons.link_rounded,
+                  label: client.isConnecting
+                      ? 'Connecting\u2026'
+                      : (client.isConnected ? 'Disconnect' : 'Connect'),
+                  icon: client.isConnecting
+                      ? Icons.hourglass_top_rounded
+                      : (client.isConnected
+                          ? Icons.link_off_rounded
+                          : Icons.link_rounded),
                   isSecondary: client.isConnected,
-                  onPressed:
-                      client.isConnected ? client.disconnect : () => onConnect(),
+                  onPressed: client.isConnecting
+                      ? null
+                      : (client.isConnected
+                          ? client.disconnect
+                          : () => onConnect()),
                 ),
               ),
             ],

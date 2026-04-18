@@ -98,9 +98,13 @@ class SettingsTab extends StatelessWidget {
                   const SizedBox(width: 12),
                   Expanded(
                     child: RaikoButton(
-                      label: client.isConnected ? 'Reconnect' : 'Connect',
-                      icon: Icons.wifi_tethering_rounded,
-                      onPressed: onConnect,
+                      label: client.isConnecting
+                          ? 'Connecting\u2026'
+                          : (client.isConnected ? 'Reconnect' : 'Connect'),
+                      icon: client.isConnecting
+                          ? Icons.hourglass_top_rounded
+                          : Icons.wifi_tethering_rounded,
+                      onPressed: client.isConnecting ? null : onConnect,
                     ),
                   ),
                 ],

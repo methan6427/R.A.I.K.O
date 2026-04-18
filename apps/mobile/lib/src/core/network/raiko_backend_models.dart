@@ -148,6 +148,22 @@ class RaikoCommandInfo {
   }
 }
 
+class RaikoCommandResult {
+  const RaikoCommandResult({
+    required this.commandId,
+    required this.action,
+    required this.status,
+    required this.output,
+    required this.receivedAt,
+  });
+
+  final String commandId;
+  final String action;
+  final String status;
+  final String output;
+  final DateTime receivedAt;
+}
+
 List<T> _decodeList<T>(dynamic source, _JsonFactory<T> factory) {
   final items = source is List ? source : const <dynamic>[];
 

@@ -29,7 +29,7 @@ class RaikoWsClient extends ChangeNotifier {
   RaikoBackendConfig _config;
   final RaikoApiClient _apiClient;
   WebSocket? _socket;
-  bool _isConnecting = false;
+  bool isConnecting = false;
   bool _isStarting = false;
   bool _disposed = false;
   bool _autoReconnect = true;
@@ -39,6 +39,7 @@ class RaikoWsClient extends ChangeNotifier {
   bool isConnected = false;
   String selectedAgentId = '';
   String? lastError;
+  RaikoCommandResult? lastCommandResult;
 
   List<RaikoDeviceInfo> devices = const <RaikoDeviceInfo>[];
   List<RaikoAgentInfo> agents = const <RaikoAgentInfo>[];
@@ -76,7 +77,7 @@ class RaikoWsClient extends ChangeNotifier {
   }
 
   Future<void> connect({String? url, bool force = false}) async {
-    if (_isConnecting) {
+    if (isConnecting) {
       return;
     }
 
@@ -89,7 +90,8 @@ class RaikoWsClient extends ChangeNotifier {
       return;
     }
 
-    _isConnecting = true;
+    isConnecting = true;
+    notifyListeners();
 
     try {
       if (existingSocket != null) {
@@ -162,7 +164,7 @@ class RaikoWsClient extends ChangeNotifier {
       _socket = null;
       await socket?.close();
     } finally {
-      _isConnecting = false;
+      isConnecting = false;
     }
 
     notifyListeners();
@@ -360,6 +362,13 @@ class RaikoWsClient extends ChangeNotifier {
             .toList(growable: false);
         break;
       case 'command.result':
+        lastCommandResult = RaikoCommandResult(
+          commandId: payload['commandId'] as String? ?? '',
+          action: payload['action'] as String? ?? 'unknown',
+          status: payload['status'] as String? ?? 'unknown',
+          output: payload['output'] as String? ?? '',
+          receivedAt: DateTime.now(),
+        );
         _log(
           'Result: ${payload['action']} -> ${payload['status']} (${payload['output']})',
         );

@@ -13,6 +13,8 @@ dependencies:
     path: ../../packages/raiko_ui
   shared_theme:
     path: ../../packages/shared_theme
+  shared_preferences: ^2.3.2
+  device_info_plus: ^11.1.0
 
 dev_dependencies:
   flutter_test:

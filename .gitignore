@@ -23,6 +23,10 @@ pubspec.lock
 **/android/local.properties
 **/windows/flutter/ephemeral/
 
+# Bundled agent artefacts
+tools/dist/
+tools/node_modules/
+
 # General OS/editor noise
 .DS_Store
 Thumbs.db

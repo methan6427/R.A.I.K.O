@@ -3,29 +3,64 @@
  * R.A.I.K.O Standalone Windows Agent
  *
  * Setup on any Windows machine with Node.js 18+:
- *   1. Copy this file to the laptop
+ *   1. Copy this file to the laptop along with a config.json (see config.example.json)
  *   2. Run: npm init -y && npm install ws
  *   3. Run: node standalone-agent.mjs
  *
- * Or set env vars before running:
- *   set RAIKO_BACKEND_WS_URL=ws://192.168.1.XXX:8080/ws
- *   set RAIKO_AUTH_TOKEN=raiko-dev
- *   node standalone-agent.mjs
+ * Configuration sources (highest precedence first):
+ *   1. Environment variables (RAIKO_BACKEND_WS_URL, RAIKO_AUTH_TOKEN, etc.)
+ *   2. config.json next to this script
+ *   3. Built-in defaults
  */
 
 import { spawn } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { hostname } from 'node:os';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import WebSocket from 'ws';
 
 // ─── Configuration ───────────────────────────────────────────────────────────
 
-const BACKEND_WS_URL = process.env.RAIKO_BACKEND_WS_URL || 'ws://CHANGE_ME:8080/ws';
-const AUTH_TOKEN      = process.env.RAIKO_AUTH_TOKEN      || 'raiko-dev';
-const AGENT_ID        = process.env.RAIKO_AGENT_ID        || `agent-${hostname().toLowerCase()}`;
-const AGENT_NAME      = process.env.RAIKO_AGENT_NAME      || `RAIKO Agent (${hostname()})`;
-const DRY_RUN         = (process.env.RAIKO_DRY_RUN || 'false').toLowerCase() === 'true';
-const HEARTBEAT_MS    = 15_000;
-const RECONNECT_MS    = 5_000;
+// When bundled via pkg, `import.meta.url` points inside the virtual snapshot
+// rather than to the exe on disk. Use `process.execPath` so config.json can
+// live next to the binary.
+const SCRIPT_DIR = process.pkg
+  ? dirname(process.execPath)
+  : dirname(fileURLToPath(import.meta.url));
+const CONFIG_PATH = join(SCRIPT_DIR, 'config.json');
+
+function loadConfigFile() {
+  try {
+    const raw = readFileSync(CONFIG_PATH, 'utf8');
+    const parsed = JSON.parse(raw);
+    return typeof parsed === 'object' && parsed !== null ? parsed : {};
+  } catch (err) {
+    if (err.code === 'ENOENT') return {};
+    console.warn(`[RAIKO] Ignoring config.json (${err.message})`);
+    return {};
+  }
+}
+
+const fileConfig = loadConfigFile();
+
+function pick(envKey, fileKey, fallback) {
+  const envValue = process.env[envKey];
+  if (envValue !== undefined && envValue !== '') return envValue;
+  const fileValue = fileConfig[fileKey];
+  if (fileValue !== undefined && fileValue !== null && fileValue !== '') {
+    return String(fileValue);
+  }
+  return fallback;
+}
+
+const BACKEND_WS_URL = pick('RAIKO_BACKEND_WS_URL', 'backendWsUrl', 'ws://CHANGE_ME:8080/ws');
+const AUTH_TOKEN     = pick('RAIKO_AUTH_TOKEN', 'authToken', 'raiko-dev');
+const AGENT_ID       = pick('RAIKO_AGENT_ID', 'agentId', `agent-${hostname().toLowerCase()}`);
+const AGENT_NAME     = pick('RAIKO_AGENT_NAME', 'agentName', `RAIKO Agent (${hostname()})`);
+const DRY_RUN        = pick('RAIKO_DRY_RUN', 'dryRun', 'false').toLowerCase() === 'true';
+const HEARTBEAT_MS   = Number(pick('RAIKO_HEARTBEAT_MS', 'heartbeatMs', '15000'));
+const RECONNECT_MS   = Number(pick('RAIKO_RECONNECT_MS', 'reconnectMs', '5000'));
 
 // ─── Command Handlers ────────────────────────────────────────────────────────
 

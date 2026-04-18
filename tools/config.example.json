@@ -1,0 +1,9 @@
+{
+  "backendWsUrl": "wss://raiko.your-domain.com/ws",
+  "authToken": "REPLACE_WITH_RAIKO_AUTH_TOKEN",
+  "agentId": "agent-laptop-01",
+  "agentName": "RAIKO Laptop Agent",
+  "dryRun": false,
+  "heartbeatMs": 15000,
+  "reconnectMs": 5000
+}

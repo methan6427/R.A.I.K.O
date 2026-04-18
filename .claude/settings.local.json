@@ -5,7 +5,19 @@
       "Bash(npx tsc:*)",
       "Bash(flutter emulators:*)",
       "Bash(flutter devices:*)",
-      "Bash(flutter run:*)"
+      "Bash(flutter run:*)",
+      "Bash(flutter pub *)",
+      "Bash(flutter test *)",
+      "Bash(flutter build *)",
+      "Bash(npm list *)",
+      "Bash(where pm2 *)",
+      "Bash(node --check tools/standalone-agent.mjs)",
+      "Bash(npm --version)",
+      "Bash(npx --version)",
+      "Bash(node --check tools/build.mjs)",
+      "Bash(npm run *)",
+      "Bash(where docker *)",
+      "Bash(docker --version)"
     ]
   }
 }

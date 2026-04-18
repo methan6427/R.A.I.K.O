@@ -1,0 +1,36 @@
+# Node
+**/node_modules
+**/dist
+**/coverage
+**/.env
+**/.env.*
+**/npm-debug.log*
+
+# Flutter / mobile / desktop (not needed by backend image)
+apps/mobile
+apps/desktop
+**/.dart_tool
+**/build
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/pubspec.lock
+
+# Standalone agent bundling output
+tools/dist
+tools/node_modules
+
+# Repo metadata + docs
+.git
+.gitignore
+.github
+.idea
+.vscode
+docs
+*.md
+
+# OS noise
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

@@ -1,0 +1,18 @@
+{
+  "name": "raiko-tools",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Standalone R.A.I.K.O agent script and bundling tooling.",
+  "type": "module",
+  "scripts": {
+    "start": "node standalone-agent.mjs",
+    "bundle": "node build.mjs"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@yao-pkg/pkg": "^6.6.0",
+    "esbuild": "^0.24.0"
+  }
+}
