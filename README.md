@@ -9,7 +9,6 @@ host, with realtime online/offline state surfaced back to the phone.
 ## Mobile App Screenshots
 
 <div style="display: flex; gap: 10px; overflow-x: auto; padding: 10px 0; scroll-behavior: smooth;">
-  <img src="screenshots/00_Preview.png" alt="Screenshot 1" style="width: 240px; height: auto; flex-shrink: 0; border-radius: 12px;">
   <img src="screenshots/01_screen.png" alt="Screenshot 2" style="width: 240px; height: auto; flex-shrink: 0; border-radius: 12px;">
   <img src="screenshots/02_screen.png" alt="Screenshot 3" style="width: 240px; height: auto; flex-shrink: 0; border-radius: 12px;">
   <img src="screenshots/03_screen.png" alt="Screenshot 4" style="width: 240px; height: auto; flex-shrink: 0; border-radius: 12px;">
