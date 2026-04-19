@@ -22,7 +22,6 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
-Name: "startmenu"; Description: "Create Start Menu folder"; GroupDescription: "{cm:AdditionalIcons}"; Flags: checked
 
 [Files]
 ; Main executable
@@ -39,13 +38,10 @@ Source: "setup.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Source: "README-AGENT.txt"; DestDir: "{app}"; Flags: isreadme ignoreversion
 
 [Icons]
-; Start Menu
 Name: "{group}\R.A.I.K.O Agent Setup"; Filename: "powershell"; Parameters: "-ExecutionPolicy Bypass -File ""{app}\setup-gui.ps1"""; IconFilename: "{app}\raiko-agent.exe"
 Name: "{group}\Run Agent"; Filename: "{app}\raiko-agent.exe"; IconFilename: "{app}\raiko-agent.exe"
 Name: "{group}\Edit Config"; Filename: "notepad.exe"; Parameters: "{app}\config.json"
 Name: "{group}\Uninstall"; Filename: "{uninstallexe}"
-
-; Desktop shortcut (optional)
 Name: "{commondesktop}\R.A.I.K.O Agent Setup"; Filename: "powershell"; Parameters: "-ExecutionPolicy Bypass -File ""{app}\setup-gui.ps1"""; IconFilename: "{app}\raiko-agent.exe"; Tasks: desktopicon
 
 [Run]
