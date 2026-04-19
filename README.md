@@ -8,9 +8,15 @@ host, with realtime online/offline state surfaced back to the phone.
 
 ## App Screenshots
 
-| | | | | | | |
-|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| ![Screenshot 1](screenshots/00_Preview.png) | ![Screenshot 2](screenshots/01_screen.png) | ![Screenshot 3](screenshots/02_screen.png) | ![Screenshot 4](screenshots/03_screen.png) | ![Screenshot 5](screenshots/04_screen.png) | ![Screenshot 6](screenshots/05_screen.png) | ![Screenshot 7](screenshots/06_screen.png) |
+<div style="display: flex; gap: 10px; overflow-x: auto; padding: 10px 0; scroll-behavior: smooth;">
+  <img src="screenshots/00_Preview.png" alt="Screenshot 1" style="width: 240px; height: auto; flex-shrink: 0; border-radius: 12px;">
+  <img src="screenshots/01_screen.png" alt="Screenshot 2" style="width: 240px; height: auto; flex-shrink: 0; border-radius: 12px;">
+  <img src="screenshots/02_screen.png" alt="Screenshot 3" style="width: 240px; height: auto; flex-shrink: 0; border-radius: 12px;">
+  <img src="screenshots/03_screen.png" alt="Screenshot 4" style="width: 240px; height: auto; flex-shrink: 0; border-radius: 12px;">
+  <img src="screenshots/04_screen.png" alt="Screenshot 5" style="width: 240px; height: auto; flex-shrink: 0; border-radius: 12px;">
+  <img src="screenshots/05_screen.png" alt="Screenshot 6" style="width: 240px; height: auto; flex-shrink: 0; border-radius: 12px;">
+  <img src="screenshots/06_screen.png" alt="Screenshot 7" style="width: 240px; height: auto; flex-shrink: 0; border-radius: 12px;">
+</div>
 
 ## Repository Layout
 
