@@ -77,7 +77,13 @@ $startBtn.Add_Click({
       return
     }
 
-    $configPath = ".\config.json"
+    # Get the directory where the script or exe is located
+    $scriptDir = $PSScriptRoot
+    if (-not $scriptDir) { $scriptDir = (Get-Location).Path }
+
+    $configPath = Join-Path $scriptDir "config.json"
+    $exePath = Join-Path $scriptDir "raiko-agent.exe"
+
     $config = @{
       backendWsUrl = $backendUrl
       authToken = $authToken
@@ -92,11 +98,11 @@ $startBtn.Add_Click({
 
     [System.Windows.Forms.MessageBox]::Show("Config saved! Agent starting...", "Success", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
 
-    # Find and run the exe
-    if (Test-Path ".\raiko-agent.exe") {
-      & ".\raiko-agent.exe"
+    # Run the exe
+    if (Test-Path $exePath) {
+      & $exePath
     } else {
-      [System.Windows.Forms.MessageBox]::Show("raiko-agent.exe not found in current directory", "Error", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
+      [System.Windows.Forms.MessageBox]::Show("raiko-agent.exe not found in $scriptDir", "Error", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
     }
 
     $form.Close()
