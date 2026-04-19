@@ -6,7 +6,7 @@ Fastify + WebSocket backend, which dispatches commands to a Windows agent runnin
 the target PCs. The agent can lock, sleep, restart, shut down, or open apps on the
 host, with realtime online/offline state surfaced back to the phone.
 
-## App Screenshots
+## Mobile App Screenshots
 
 <div style="display: flex; gap: 10px; overflow-x: auto; padding: 10px 0; scroll-behavior: smooth;">
   <img src="screenshots/00_Preview.png" alt="Screenshot 1" style="width: 240px; height: auto; flex-shrink: 0; border-radius: 12px;">
@@ -17,6 +17,13 @@ host, with realtime online/offline state surfaced back to the phone.
   <img src="screenshots/05_screen.png" alt="Screenshot 6" style="width: 240px; height: auto; flex-shrink: 0; border-radius: 12px;">
   <img src="screenshots/06_screen.png" alt="Screenshot 7" style="width: 240px; height: auto; flex-shrink: 0; border-radius: 12px;">
 </div>
+
+## Desktop App Screenshots
+
+<div >
+  <img src="screenshots/Desktop-Screenshot.png" alt="Screenshot 1" style="width: 100%; height: auto; flex-shrink: 0; border-radius: 12px;">
+</div>
+
 
 ## Repository Layout
 
