@@ -1269,3 +1269,15 @@
 [2026-03-29T16:18:05.109Z] [INFO] [activity] Activity recorded {"type":"heartbeat","actorId":"agent-win-01","detail":"online","createdAt":"2026-03-29T16:18:05.109Z"}
 [2026-03-29T16:18:20.115Z] [INFO] [activity] Activity recorded {"type":"heartbeat","actorId":"agent-win-01","detail":"online","createdAt":"2026-03-29T16:18:20.115Z"}
 [2026-03-29T16:18:35.126Z] [INFO] [activity] Activity recorded {"type":"heartbeat","actorId":"agent-win-01","detail":"online","createdAt":"2026-03-29T16:18:35.126Z"}
+2026-04-19T01:35:29: [dotenv@17.3.1] injecting env (11) from .env -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
+2026-04-19T01:35:29: [dotenv@17.3.1] injecting env (0) from ..\..\.env -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
+2026-04-19T01:35:30: {"timestamp":"2026-04-18T22:35:30.022Z","level":"info","scope":"backend:database","message":"Database connectivity check passed"}
+2026-04-19T01:35:30: {"timestamp":"2026-04-18T22:35:30.034Z","level":"info","scope":"backend:database","message":"Database schema is current"}
+2026-04-19T01:35:30: {"timestamp":"2026-04-18T22:35:30.052Z","level":"info","scope":"backend:devices","message":"Reconciled persisted connection state on startup","meta":{"devicesMarkedOffline":0,"agentsMarkedOffline":1}}
+2026-04-19T01:35:30: {"timestamp":"2026-04-18T22:35:30.077Z","level":"info","scope":"backend","message":"Backend started","meta":{"host":"0.0.0.0","port":8080,"wsPath":"/ws"}}
+2026-04-19T10:52:34: [dotenv@17.3.1] injecting env (11) from .env -- tip: 🤖 agentic secret storage: https://dotenvx.com/as2
+2026-04-19T10:52:34: [dotenv@17.3.1] injecting env (0) from ..\..\.env -- tip: 🛠️  run anywhere with `dotenvx run -- yourcommand`
+2026-04-19T10:52:35: {"timestamp":"2026-04-19T07:52:35.029Z","level":"info","scope":"backend:database","message":"Database connectivity check passed"}
+2026-04-19T10:52:35: {"timestamp":"2026-04-19T07:52:35.044Z","level":"info","scope":"backend:database","message":"Database schema is current"}
+2026-04-19T10:52:35: {"timestamp":"2026-04-19T07:52:35.065Z","level":"info","scope":"backend:devices","message":"Reconciled persisted connection state on startup","meta":{"devicesMarkedOffline":0,"agentsMarkedOffline":0}}
+2026-04-19T10:52:35: {"timestamp":"2026-04-19T07:52:35.091Z","level":"info","scope":"backend","message":"Backend started","meta":{"host":"0.0.0.0","port":8080,"wsPath":"/ws"}}

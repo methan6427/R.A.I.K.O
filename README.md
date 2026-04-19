@@ -6,6 +6,12 @@ Fastify + WebSocket backend, which dispatches commands to a Windows agent runnin
 the target PCs. The agent can lock, sleep, restart, shut down, or open apps on the
 host, with realtime online/offline state surfaced back to the phone.
 
+## App Screenshots
+
+| | | | | | | |
+|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| ![Screenshot 1](screenshots/00_Preview.png) | ![Screenshot 2](screenshots/01_screen.png) | ![Screenshot 3](screenshots/02_screen.png) | ![Screenshot 4](screenshots/03_screen.png) | ![Screenshot 5](screenshots/04_screen.png) | ![Screenshot 6](screenshots/05_screen.png) | ![Screenshot 7](screenshots/06_screen.png) |
+
 ## Repository Layout
 
 ```text
@@ -178,6 +184,7 @@ Agent (in `config.json` next to the exe, or via env):
 
 Examples live at `apps/backend/.env.example`,
 `apps/agent-windows/.env.example`, and `tools/config.example.json`.
+
 
 ## Documentation
 
