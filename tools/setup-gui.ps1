@@ -63,30 +63,47 @@ $startBtn.Font = New-Object System.Drawing.Font("Segoe UI", 11, [System.Drawing.
 $startBtn.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
 
 $startBtn.Add_Click({
-  $backendUrl = $urlInput.Text.Trim()
-  $authToken = $tokenInput.Text.Trim()
+  try {
+    $backendUrl = $urlInput.Text.Trim()
+    $authToken = $tokenInput.Text.Trim()
 
-  if (-not $backendUrl -or -not $authToken) {
-    [System.Windows.Forms.MessageBox]::Show("Please fill in all fields", "Error", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
-    return
+    if (-not $backendUrl) {
+      [System.Windows.Forms.MessageBox]::Show("Backend URL cannot be empty", "Error", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
+      return
+    }
+
+    if (-not $authToken) {
+      [System.Windows.Forms.MessageBox]::Show("Auth Token cannot be empty", "Error", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
+      return
+    }
+
+    $configPath = ".\config.json"
+    $config = @{
+      backendWsUrl = $backendUrl
+      authToken = $authToken
+      agentId = "agent-$($env:COMPUTERNAME)"
+      agentName = "RAIKO Agent ($env:COMPUTERNAME)"
+      dryRun = $false
+      heartbeatMs = 15000
+      reconnectMs = 5000
+    } | ConvertTo-Json
+
+    $config | Out-File -FilePath $configPath -Encoding UTF8 -ErrorAction Stop
+
+    [System.Windows.Forms.MessageBox]::Show("Config saved! Agent starting...", "Success", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+
+    # Find and run the exe
+    if (Test-Path ".\raiko-agent.exe") {
+      & ".\raiko-agent.exe"
+    } else {
+      [System.Windows.Forms.MessageBox]::Show("raiko-agent.exe not found in current directory", "Error", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
+    }
+
+    $form.Close()
   }
-
-  $configPath = ".\config.json"
-  $config = @{
-    backendWsUrl = $backendUrl
-    authToken = $authToken
-    agentId = "agent-$(hostname)"
-    agentName = "RAIKO Agent ($env:COMPUTERNAME)"
-    dryRun = $false
-    heartbeatMs = 15000
-    reconnectMs = 5000
-  } | ConvertTo-Json
-
-  $config | Out-File -FilePath $configPath -Encoding UTF8
-  [System.Windows.Forms.MessageBox]::Show("Config saved! Starting agent...", "Success", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
-
-  $form.Hide()
-  & ".\raiko-agent.exe"
+  catch {
+    [System.Windows.Forms.MessageBox]::Show("Error: $($_.Exception.Message)", "Setup Error", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
+  }
 })
 
 $form.Controls.Add($startBtn)
