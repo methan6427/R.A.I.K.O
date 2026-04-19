@@ -36,6 +36,7 @@ class _MobileDashboardScreenState extends State<MobileDashboardScreen> {
   late final TextEditingController baseHttpUrlController;
   late final TextEditingController websocketUrlController;
   late final TextEditingController authTokenController;
+  late final TextEditingController deviceNameController;
   int currentIndex = 0;
   String? _lastShownError;
   DateTime? _lastShownResultAt;
@@ -53,6 +54,7 @@ class _MobileDashboardScreenState extends State<MobileDashboardScreen> {
     baseHttpUrlController = TextEditingController(text: client.baseHttpUrl);
     websocketUrlController = TextEditingController(text: client.websocketUrl);
     authTokenController = TextEditingController(text: client.authToken);
+    deviceNameController = TextEditingController(text: client.deviceName);
     if (widget.autoStartBackend) {
       unawaited(client.start());
     }
@@ -63,6 +65,7 @@ class _MobileDashboardScreenState extends State<MobileDashboardScreen> {
     baseHttpUrlController.dispose();
     websocketUrlController.dispose();
     authTokenController.dispose();
+    deviceNameController.dispose();
     client.removeListener(_onChanged);
     client.disconnect();
     client.dispose();
@@ -149,6 +152,11 @@ class _MobileDashboardScreenState extends State<MobileDashboardScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _applyAndPersistIdentitySettings() async {
+    client.updateDeviceName(deviceNameController.text);
+    await widget.settings.saveDeviceName(deviceNameController.text);
   }
 
   Future<void> _applyAndPersistConnectionSettings() async {
@@ -281,8 +289,12 @@ class _MobileDashboardScreenState extends State<MobileDashboardScreen> {
         baseHttpUrlController: baseHttpUrlController,
         websocketUrlController: websocketUrlController,
         authTokenController: authTokenController,
+        deviceNameController: deviceNameController,
         onApplyConnectionSettings: () {
           unawaited(_applyAndPersistConnectionSettings());
+        },
+        onApplyIdentitySettings: () {
+          unawaited(_applyAndPersistIdentitySettings());
         },
         onConnect: _connect,
       ),

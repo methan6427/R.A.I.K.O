@@ -3,9 +3,12 @@ import 'package:raiko_ui/raiko_ui.dart';
 import 'package:shared_theme/shared_theme.dart';
 
 import '../../../core/network/raiko_ws_client.dart';
+import '../../../core/settings/desktop_settings_store.dart';
 
 class DesktopDashboardScreen extends StatefulWidget {
-  const DesktopDashboardScreen({super.key});
+  const DesktopDashboardScreen({super.key, required this.initialSettings});
+
+  final DesktopSettings initialSettings;
 
   @override
   State<DesktopDashboardScreen> createState() => _DesktopDashboardScreenState();
@@ -15,25 +18,35 @@ class _DesktopDashboardScreenState extends State<DesktopDashboardScreen> {
   late final RaikoWsClient client;
   late final TextEditingController backendUrlController;
   late final TextEditingController authTokenController;
+  late final TextEditingController deviceNameController;
+  late final TextEditingController agentNameController;
   int currentIndex = 0;
 
   @override
   void initState() {
     super.initState();
+    final s = widget.initialSettings;
     client = RaikoWsClient(
       deviceId: 'desktop-windows-01',
-      deviceName: 'RAIKO Desktop',
+      deviceName: s.deviceName,
       platform: 'windows',
       kind: 'desktop',
+      backendUrl: s.backendUrl,
+      agentName: s.agentName,
     )..addListener(_onChanged);
+    client.authToken = s.authToken;
     backendUrlController = TextEditingController(text: client.backendUrl);
     authTokenController = TextEditingController(text: client.authToken);
+    deviceNameController = TextEditingController(text: client.deviceName);
+    agentNameController = TextEditingController(text: client.agentName);
   }
 
   @override
   void dispose() {
     backendUrlController.dispose();
     authTokenController.dispose();
+    deviceNameController.dispose();
+    agentNameController.dispose();
     client.removeListener(_onChanged);
     client.disconnect();
     client.dispose();
@@ -41,19 +54,14 @@ class _DesktopDashboardScreenState extends State<DesktopDashboardScreen> {
   }
 
   void _onChanged() {
-    if (backendUrlController.text != client.backendUrl) {
-      backendUrlController.text = client.backendUrl;
-    }
-    if (authTokenController.text != client.authToken) {
-      authTokenController.text = client.authToken;
-    }
-
     if (mounted) {
       setState(() {});
     }
   }
 
   Future<void> _connect() async {
+    client.updateBackendUrl(backendUrlController.text);
+    client.updateAuthToken(authTokenController.text);
     await client.connect(backendUrlController.text);
   }
 
@@ -67,9 +75,27 @@ class _DesktopDashboardScreenState extends State<DesktopDashboardScreen> {
         client: client,
         backendUrlController: backendUrlController,
         authTokenController: authTokenController,
+        deviceNameController: deviceNameController,
+        agentNameController: agentNameController,
         onApplyConnectionSettings: () {
           client.updateBackendUrl(backendUrlController.text);
           client.updateAuthToken(authTokenController.text);
+          DesktopSettingsStore.save(DesktopSettings(
+            backendUrl: client.backendUrl,
+            authToken: client.authToken,
+            deviceName: client.deviceName,
+            agentName: client.agentName,
+          ));
+        },
+        onApplyIdentitySettings: () {
+          client.updateDeviceName(deviceNameController.text);
+          client.updateAgentName(agentNameController.text);
+          DesktopSettingsStore.save(DesktopSettings(
+            backendUrl: client.backendUrl,
+            authToken: client.authToken,
+            deviceName: client.deviceName,
+            agentName: client.agentName,
+          ));
         },
         onConnect: _connect,
       ),
@@ -364,14 +390,20 @@ class _SettingsTab extends StatelessWidget {
     required this.client,
     required this.backendUrlController,
     required this.authTokenController,
+    required this.deviceNameController,
+    required this.agentNameController,
     required this.onApplyConnectionSettings,
+    required this.onApplyIdentitySettings,
     required this.onConnect,
   });
 
   final RaikoWsClient client;
   final TextEditingController backendUrlController;
   final TextEditingController authTokenController;
+  final TextEditingController deviceNameController;
+  final TextEditingController agentNameController;
   final VoidCallback onApplyConnectionSettings;
+  final VoidCallback onApplyIdentitySettings;
   final Future<void> Function() onConnect;
 
   @override
@@ -434,10 +466,31 @@ class _SettingsTab extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Workstation Identity', style: Theme.of(context).textTheme.titleLarge),
+              Text('Device & Agent Identity', style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: 8),
+              Text(
+                'Rename this workstation and the agent it registers as.',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: deviceNameController,
+                decoration: const InputDecoration(labelText: 'Device name'),
+              ),
               const SizedBox(height: 12),
+              TextField(
+                controller: agentNameController,
+                decoration: const InputDecoration(labelText: 'Agent name (shown in target agent list)'),
+              ),
+              const SizedBox(height: 16),
+              RaikoButton(
+                label: 'Apply names',
+                icon: Icons.check_rounded,
+                isSecondary: true,
+                onPressed: onApplyIdentitySettings,
+              ),
+              const SizedBox(height: 16),
               _InfoRow(label: 'Device ID', value: client.deviceId),
-              _InfoRow(label: 'Name', value: client.deviceName),
               _InfoRow(label: 'Platform', value: client.platform),
               _InfoRow(label: 'Selected Agent', value: client.selectedAgentId.isEmpty ? 'none' : client.selectedAgentId),
               _InfoRow(label: 'Auth Token', value: client.authToken.isEmpty ? 'not configured' : 'configured'),

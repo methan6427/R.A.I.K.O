@@ -22,7 +22,7 @@ class RaikoWsClient extends ChangeNotifier {
            RaikoApiClient(config: initialConfig ?? RaikoBackendConfig.defaults);
 
   final String deviceId;
-  final String deviceName;
+  String deviceName;
   final String platform;
   final String kind;
 
@@ -282,6 +282,12 @@ class RaikoWsClient extends ChangeNotifier {
     _reconnectTimer = null;
     disconnect();
     super.dispose();
+  }
+
+  void updateDeviceName(String name) {
+    if (name.trim().isEmpty) return;
+    deviceName = name.trim();
+    notifyListeners();
   }
 
   void updateSelectedAgent(String agentId) {

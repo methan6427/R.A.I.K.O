@@ -19,7 +19,10 @@
       "Bash(where docker *)",
       "Bash(docker --version)",
       "Bash(awk '{print $6, $7, $8, $9}')",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "WebFetch(domain:jrsoftware.org)",
+      "Bash(powershell -Command \"Compress-Archive -Path Release\\\\* -DestinationPath '../../../../../tools/dist/raiko-desktop-windows.zip' -Force\")",
+      "Bash(powershell -Command \"Compress-Archive -Path 'C:/akaza/General/Antigravit Projects/R.A.I.K.O/apps/desktop/build/windows/x64/runner/Release/*' -DestinationPath 'C:/akaza/General/Antigravit Projects/R.A.I.K.O/tools/dist/raiko-desktop-windows.zip' -Force\")"
     ]
   }
 }

@@ -23,10 +23,15 @@ class RaikoIdentity {
 
   static const String _deviceIdKey = 'raiko.identity.device_id';
 
+  static const String _deviceNameKey = 'raiko.identity.device_name';
+
   static Future<RaikoIdentity> resolve(SharedPreferences prefs) async {
     final deviceId = await _resolveDeviceId(prefs);
     final platform = _detectPlatform();
-    final deviceName = await _detectDeviceName(platform);
+    final saved = prefs.getString(_deviceNameKey);
+    final deviceName = (saved != null && saved.trim().isNotEmpty)
+        ? saved.trim()
+        : await _detectDeviceName(platform);
     return RaikoIdentity(
       deviceId: deviceId,
       deviceName: deviceName,

@@ -13,6 +13,7 @@ class RaikoSettingsStore {
   static const String _baseHttpKey = 'raiko.backend.base_http_url';
   static const String _websocketKey = 'raiko.backend.websocket_url';
   static const String _tokenKey = 'raiko.backend.auth_token';
+  static const String _deviceNameKey = 'raiko.identity.device_name';
 
   final SharedPreferences? _prefs;
 
@@ -32,6 +33,18 @@ class RaikoSettingsStore {
       websocketUrl: ws,
       authToken: token,
     );
+  }
+
+  String? loadDeviceName() => _prefs?.getString(_deviceNameKey);
+
+  Future<void> saveDeviceName(String name) async {
+    final prefs = _prefs;
+    if (prefs == null) return;
+    if (name.trim().isEmpty) {
+      await prefs.remove(_deviceNameKey);
+    } else {
+      await prefs.setString(_deviceNameKey, name.trim());
+    }
   }
 
   Future<void> save(RaikoBackendConfig config) async {

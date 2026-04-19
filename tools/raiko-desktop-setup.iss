@@ -2,6 +2,7 @@
 ; Built with Inno Setup 6.x
 
 [Setup]
+AppId={{E4A7C2F1-83B5-4D2E-9F6A-1C3B8E0D5A72}
 AppName=R.A.I.K.O Desktop
 AppVersion=0.1.0
 AppPublisher=R.A.I.K.O

@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+
 
 class RaikoDeviceInfo {
   const RaikoDeviceInfo({
@@ -134,12 +136,14 @@ class RaikoWsClient extends ChangeNotifier {
     required this.platform,
     required this.kind,
     this.backendUrl = 'ws://127.0.0.1:8080/ws',
-  });
+    String agentName = '',
+  }) : agentName = agentName.isEmpty ? deviceName : agentName;
 
   final String deviceId;
-  final String deviceName;
+  String deviceName;
   final String platform;
   final String kind;
+  String agentName;
 
   String backendUrl;
   String authToken = '';
@@ -185,6 +189,13 @@ class RaikoWsClient extends ChangeNotifier {
         'name': deviceName,
         'platform': platform,
         'kind': kind,
+      });
+
+      _send('agent.register', <String, Object?>{
+        'agentId': deviceId,
+        'name': agentName,
+        'platform': platform,
+        'supportedCommands': <String>['shutdown', 'restart', 'sleep', 'lock'],
       });
 
       socket.listen(
@@ -240,6 +251,18 @@ class RaikoWsClient extends ChangeNotifier {
     notifyListeners();
   }
 
+  void updateDeviceName(String name) {
+    if (name.trim().isEmpty) return;
+    deviceName = name.trim();
+    notifyListeners();
+  }
+
+  void updateAgentName(String name) {
+    if (name.trim().isEmpty) return;
+    agentName = name.trim();
+    notifyListeners();
+  }
+
   void updateSelectedAgent(String agentId) {
     selectedAgentId = agentId;
     notifyListeners();
@@ -283,6 +306,9 @@ class RaikoWsClient extends ChangeNotifier {
             .map((dynamic item) => RaikoCommandInfo.fromJson((item as Map).cast<String, dynamic>()))
             .toList(growable: false);
         break;
+      case 'command.dispatch':
+        unawaited(_executeCommand(payload));
+        break;
       case 'command.result':
         _log('Result: ${payload['action']} -> ${payload['status']} (${payload['output']})');
         break;
@@ -298,6 +324,62 @@ class RaikoWsClient extends ChangeNotifier {
     }
 
     notifyListeners();
+  }
+
+  Future<void> _executeCommand(Map<String, dynamic> payload) async {
+    final commandId = payload['commandId'] as String? ?? '';
+    final action = payload['action'] as String? ?? '';
+    final completedAt = DateTime.now().toIso8601String();
+
+    String output;
+    String status;
+
+    try {
+      switch (action) {
+        case 'shutdown':
+          await Process.run('shutdown.exe', <String>['/s', '/t', '0', '/f']);
+          output = 'Shutdown initiated';
+          break;
+        case 'restart':
+          await Process.run('shutdown.exe', <String>['/r', '/t', '0', '/f']);
+          output = 'Restart initiated';
+          break;
+        case 'sleep':
+          await Process.run('rundll32.exe', <String>['powrprof.dll,SetSuspendState', '0,1,0']);
+          output = 'Sleep initiated';
+          break;
+        case 'lock':
+          await Process.run('rundll32.exe', <String>['user32.dll,LockWorkStation']);
+          output = 'Workstation locked';
+          break;
+        default:
+          output = 'Unsupported action: $action';
+          status = 'failed';
+          _send('command.result', <String, Object?>{
+            'commandId': commandId,
+            'agentId': deviceId,
+            'action': action,
+            'status': status,
+            'output': output,
+            'completedAt': completedAt,
+          });
+          return;
+      }
+      status = 'success';
+    } catch (e) {
+      output = 'Error: $e';
+      status = 'failed';
+    }
+
+    _log('Executed $action: $output');
+    _send('command.result', <String, Object?>{
+      'commandId': commandId,
+      'agentId': deviceId,
+      'action': action,
+      'status': status,
+      'output': output,
+      'completedAt': completedAt,
+    });
   }
 
   void _send(String type, Map<String, Object?> payload) {

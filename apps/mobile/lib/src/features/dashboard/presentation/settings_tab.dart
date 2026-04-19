@@ -11,7 +11,9 @@ class SettingsTab extends StatelessWidget {
     required this.baseHttpUrlController,
     required this.websocketUrlController,
     required this.authTokenController,
+    required this.deviceNameController,
     required this.onApplyConnectionSettings,
+    required this.onApplyIdentitySettings,
     required this.onConnect,
   });
 
@@ -19,7 +21,9 @@ class SettingsTab extends StatelessWidget {
   final TextEditingController baseHttpUrlController;
   final TextEditingController websocketUrlController;
   final TextEditingController authTokenController;
+  final TextEditingController deviceNameController;
   final VoidCallback onApplyConnectionSettings;
+  final VoidCallback onApplyIdentitySettings;
   final Future<void> Function() onConnect;
 
   @override
@@ -131,9 +135,24 @@ class SettingsTab extends StatelessWidget {
                   ),
                 ],
               ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: deviceNameController,
+                decoration: const InputDecoration(
+                  labelText: 'Device name',
+                  prefixIcon: Icon(Icons.drive_file_rename_outline_rounded, size: 18),
+                  isDense: true,
+                ),
+              ),
               const SizedBox(height: 14),
+              RaikoButton(
+                label: 'Apply name',
+                icon: Icons.check_rounded,
+                isSecondary: true,
+                onPressed: onApplyIdentitySettings,
+              ),
+              const SizedBox(height: 16),
               _InfoRow(label: 'Device ID', value: client.deviceId),
-              _InfoRow(label: 'Name', value: client.deviceName),
               _InfoRow(label: 'Platform', value: client.platform),
               _InfoRow(
                 label: 'Agent',
