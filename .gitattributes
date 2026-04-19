@@ -1,5 +1,5 @@
 # Tell GitHub Linguist to ignore design exports and generated files
-RAIKO\ Mobile\ UI\ Print\ _standalone_.html linguist-documentation
+*_standalone_.html linguist-documentation
 app-screenshots.html linguist-documentation
 apps/mobile/build/** linguist-generated
 node_modules/** linguist-vendored
