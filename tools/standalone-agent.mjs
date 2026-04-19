@@ -28,7 +28,23 @@ import WebSocket from 'ws';
 const SCRIPT_DIR = process.pkg
   ? dirname(process.execPath)
   : dirname(fileURLToPath(import.meta.url));
-const CONFIG_PATH = join(SCRIPT_DIR, 'config.json');
+
+// Check AppData first (for installer), then next to exe/script
+function getConfigPath() {
+  const appDataDir = process.env.APPDATA;
+  if (appDataDir) {
+    const appDataConfig = join(appDataDir, 'R.A.I.K.O', 'config.json');
+    try {
+      readFileSync(appDataConfig, 'utf8');
+      return appDataConfig;
+    } catch (err) {
+      // Fall through to exe directory
+    }
+  }
+  return join(SCRIPT_DIR, 'config.json');
+}
+
+const CONFIG_PATH = getConfigPath();
 
 function loadConfigFile() {
   try {

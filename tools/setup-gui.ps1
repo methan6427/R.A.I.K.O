@@ -77,11 +77,17 @@ $startBtn.Add_Click({
       return
     }
 
-    # Get the directory where the script or exe is located
+    # Use AppData for config (user-writable)
+    $appDataDir = Join-Path $env:APPDATA "R.A.I.K.O"
+    if (-not (Test-Path $appDataDir)) {
+      New-Item -ItemType Directory -Path $appDataDir -Force | Out-Null
+    }
+
+    $configPath = Join-Path $appDataDir "config.json"
+
+    # Exe is in Program Files or same directory as script
     $scriptDir = $PSScriptRoot
     if (-not $scriptDir) { $scriptDir = (Get-Location).Path }
-
-    $configPath = Join-Path $scriptDir "config.json"
     $exePath = Join-Path $scriptDir "raiko-agent.exe"
 
     $config = @{
