@@ -44,13 +44,14 @@ COPY --from=build /app/apps/backend/migrations ./apps/backend/migrations
 COPY --from=build /app/apps/agent-windows/package.json ./apps/agent-windows/
 
 # Production-only install. Workspace symlinks resolve shared_types/dist.
-RUN npm ci --omit=dev
+# curl is added for the Coolify/Docker healthcheck.
+RUN npm ci --omit=dev && apk add --no-cache curl
 
 EXPOSE 8080
 
-# Coolify and Docker can probe /health (no auth required).
-HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD node -e "fetch('http://127.0.0.1:8080/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+# Longer start period to accommodate Supabase SSL handshake + migrations.
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD curl -f http://127.0.0.1:8080/health || exit 1
 
 WORKDIR /app/apps/backend
 CMD ["node", "dist/index.js"]
