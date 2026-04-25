@@ -2106,3 +2106,39 @@
 2026-04-19T21:03:46: {"timestamp":"2026-04-19T18:03:46.422Z","level":"info","scope":"backend:database","message":"Database schema is current"}
 2026-04-19T21:03:46: {"timestamp":"2026-04-19T18:03:46.443Z","level":"info","scope":"backend:devices","message":"Reconciled persisted connection state on startup","meta":{"devicesMarkedOffline":0,"agentsMarkedOffline":1}}
 2026-04-19T21:03:46: {"timestamp":"2026-04-19T18:03:46.471Z","level":"info","scope":"backend","message":"Backend started","meta":{"host":"0.0.0.0","port":8080,"wsPath":"/ws"}}
+2026-04-20T16:54:59: [dotenv@17.3.1] injecting env (11) from .env -- tip: 🤖 agentic secret storage: https://dotenvx.com/as2
+2026-04-20T16:54:59: [dotenv@17.3.1] injecting env (0) from ..\..\.env -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
+2026-04-20T16:55:00: {"timestamp":"2026-04-20T13:55:00.077Z","level":"info","scope":"backend:database","message":"Database connectivity check passed"}
+2026-04-20T16:55:00: {"timestamp":"2026-04-20T13:55:00.095Z","level":"info","scope":"backend:database","message":"Database schema is current"}
+2026-04-20T16:55:00: {"timestamp":"2026-04-20T13:55:00.116Z","level":"info","scope":"backend:devices","message":"Reconciled persisted connection state on startup","meta":{"devicesMarkedOffline":0,"agentsMarkedOffline":0}}
+2026-04-20T16:55:00: {"timestamp":"2026-04-20T13:55:00.144Z","level":"info","scope":"backend","message":"Backend started","meta":{"host":"0.0.0.0","port":8080,"wsPath":"/ws"}}
+2026-04-21T15:55:42: [dotenv@17.3.1] injecting env (11) from .env -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+2026-04-21T15:55:42: [dotenv@17.3.1] injecting env (0) from ..\..\.env -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
+2026-04-21T15:55:43: {"timestamp":"2026-04-21T12:55:43.000Z","level":"info","scope":"backend:database","message":"Database connectivity check passed"}
+2026-04-21T15:55:43: {"timestamp":"2026-04-21T12:55:43.018Z","level":"info","scope":"backend:database","message":"Database schema is current"}
+2026-04-21T15:55:43: {"timestamp":"2026-04-21T12:55:43.041Z","level":"info","scope":"backend:devices","message":"Reconciled persisted connection state on startup","meta":{"devicesMarkedOffline":0,"agentsMarkedOffline":0}}
+2026-04-21T15:55:43: {"timestamp":"2026-04-21T12:55:43.068Z","level":"info","scope":"backend","message":"Backend started","meta":{"host":"0.0.0.0","port":8080,"wsPath":"/ws"}}
+2026-04-23T15:00:06: [dotenv@17.3.1] injecting env (11) from .env -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
+2026-04-23T15:00:06: [dotenv@17.3.1] injecting env (0) from ..\..\.env -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
+2026-04-23T15:00:06: {"timestamp":"2026-04-23T12:00:06.877Z","level":"info","scope":"backend:database","message":"Database connectivity check passed"}
+2026-04-23T15:00:06: {"timestamp":"2026-04-23T12:00:06.895Z","level":"info","scope":"backend:database","message":"Database schema is current"}
+2026-04-23T15:00:06: {"timestamp":"2026-04-23T12:00:06.917Z","level":"info","scope":"backend:devices","message":"Reconciled persisted connection state on startup","meta":{"devicesMarkedOffline":0,"agentsMarkedOffline":0}}
+2026-04-23T15:00:06: {"timestamp":"2026-04-23T12:00:06.943Z","level":"info","scope":"backend","message":"Backend started","meta":{"host":"0.0.0.0","port":8080,"wsPath":"/ws"}}
+2026-04-23T22:02:01: [dotenv@17.3.1] injecting env (11) from .env -- tip: ⚙️  enable debug logging with { debug: true }
+2026-04-23T22:02:01: [dotenv@17.3.1] injecting env (0) from ..\..\.env -- tip: 🤖 agentic secret storage: https://dotenvx.com/as2
+2026-04-23T22:02:02: {"timestamp":"2026-04-23T19:02:02.459Z","level":"info","scope":"backend:database","message":"Database connectivity check passed"}
+2026-04-23T22:02:02: {"timestamp":"2026-04-23T19:02:02.476Z","level":"info","scope":"backend:database","message":"Database schema is current"}
+2026-04-23T22:02:02: {"timestamp":"2026-04-23T19:02:02.497Z","level":"info","scope":"backend:devices","message":"Reconciled persisted connection state on startup","meta":{"devicesMarkedOffline":0,"agentsMarkedOffline":0}}
+2026-04-23T22:02:02: {"timestamp":"2026-04-23T19:02:02.529Z","level":"info","scope":"backend","message":"Backend started","meta":{"host":"0.0.0.0","port":8080,"wsPath":"/ws"}}
+2026-04-24T16:09:10: [dotenv@17.3.1] injecting env (11) from .env -- tip: 🔐 prevent committing .env to code: https://dotenvx.com/precommit
+2026-04-24T16:09:10: [dotenv@17.3.1] injecting env (0) from ..\..\.env -- tip: ⚙️  suppress all logs with { quiet: true }
+2026-04-24T16:09:11: {"timestamp":"2026-04-24T13:09:11.205Z","level":"info","scope":"backend:database","message":"Database connectivity check passed"}
+2026-04-24T16:09:11: {"timestamp":"2026-04-24T13:09:11.227Z","level":"info","scope":"backend:database","message":"Database schema is current"}
+2026-04-24T16:09:11: {"timestamp":"2026-04-24T13:09:11.253Z","level":"info","scope":"backend:devices","message":"Reconciled persisted connection state on startup","meta":{"devicesMarkedOffline":0,"agentsMarkedOffline":0}}
+2026-04-24T16:09:11: {"timestamp":"2026-04-24T13:09:11.281Z","level":"info","scope":"backend","message":"Backend started","meta":{"host":"0.0.0.0","port":8080,"wsPath":"/ws"}}
+2026-04-24T17:21:14: [dotenv@17.3.1] injecting env (11) from .env -- tip: ⚡️ secrets for agents: https://dotenvx.com/as2
+2026-04-24T17:21:14: [dotenv@17.3.1] injecting env (0) from ..\..\.env -- tip: 🛠️  run anywhere with `dotenvx run -- yourcommand`
+2026-04-24T17:21:15: {"timestamp":"2026-04-24T14:21:15.273Z","level":"info","scope":"backend:database","message":"Database connectivity check passed"}
+2026-04-24T17:21:15: {"timestamp":"2026-04-24T14:21:15.296Z","level":"info","scope":"backend:database","message":"Database schema is current"}
+2026-04-24T17:21:15: {"timestamp":"2026-04-24T14:21:15.320Z","level":"info","scope":"backend:devices","message":"Reconciled persisted connection state on startup","meta":{"devicesMarkedOffline":0,"agentsMarkedOffline":0}}
+2026-04-24T17:21:15: {"timestamp":"2026-04-24T14:21:15.355Z","level":"info","scope":"backend","message":"Backend started","meta":{"host":"0.0.0.0","port":8080,"wsPath":"/ws"}}

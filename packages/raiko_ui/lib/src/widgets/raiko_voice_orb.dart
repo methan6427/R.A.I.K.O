@@ -7,6 +7,7 @@ class RaikoVoiceOrb extends StatefulWidget {
     required this.label,
     this.size = 160,
     this.isActive = true,
+    this.voiceState,
     this.onPressed,
     this.tooltip,
   });
@@ -14,6 +15,7 @@ class RaikoVoiceOrb extends StatefulWidget {
   final String label;
   final double size;
   final bool isActive;
+  final dynamic voiceState;
   final VoidCallback? onPressed;
   final String? tooltip;
 
@@ -48,9 +50,15 @@ class _RaikoVoiceOrbState extends State<RaikoVoiceOrb>
   @override
   void didUpdateWidget(RaikoVoiceOrb oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.isActive && !_controller.isAnimating) {
+    final stateStr = widget.voiceState?.toString() ?? '';
+    final shouldAnimate = widget.isActive &&
+        (stateStr.endsWith('listening') ||
+            stateStr.endsWith('processing') ||
+            stateStr.endsWith('speaking'));
+
+    if (shouldAnimate && !_controller.isAnimating) {
       _controller.repeat(reverse: true);
-    } else if (!widget.isActive && _controller.isAnimating) {
+    } else if (!shouldAnimate && _controller.isAnimating) {
       _controller.stop();
       _controller.value = 0.0;
     }
@@ -62,16 +70,57 @@ class _RaikoVoiceOrbState extends State<RaikoVoiceOrb>
     super.dispose();
   }
 
+  Color _getStateColor() {
+    final stateStr = widget.voiceState?.toString() ?? '';
+    if (stateStr.endsWith('listening')) {
+      return RaikoColors.accentStrong;
+    } else if (stateStr.endsWith('processing')) {
+      return const Color(0xFF6366F1);
+    } else if (stateStr.endsWith('confirming')) {
+      return RaikoColors.warning;
+    } else if (stateStr.endsWith('executing')) {
+      return const Color(0xFF8B5CF6);
+    } else if (stateStr.endsWith('speaking')) {
+      return const Color(0xFF06B6D4);
+    } else if (stateStr.endsWith('error')) {
+      return RaikoColors.danger;
+    }
+    return RaikoColors.accent.withValues(alpha: 0.5);
+  }
+
+  String _getStateLabel() {
+    final stateStr = widget.voiceState?.toString() ?? '';
+    if (stateStr.endsWith('listening')) {
+      return 'Listening...';
+    } else if (stateStr.endsWith('processing')) {
+      return 'Processing...';
+    } else if (stateStr.endsWith('confirming')) {
+      return 'Confirm?';
+    } else if (stateStr.endsWith('executing')) {
+      return 'Executing...';
+    } else if (stateStr.endsWith('speaking')) {
+      return 'Speaking...';
+    } else if (stateStr.endsWith('error')) {
+      return 'Error';
+    }
+    return widget.label;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final glowColor =
-        widget.isActive ? RaikoColors.accentStrong : RaikoColors.textMuted;
+    final stateColor = _getStateColor();
+    final glowColor = widget.isActive ? stateColor : RaikoColors.textMuted;
+    final stateStr = widget.voiceState?.toString() ?? '';
+    final shouldPulse = widget.isActive &&
+        (stateStr.endsWith('listening') ||
+            stateStr.endsWith('processing') ||
+            stateStr.endsWith('speaking'));
 
     final orb = AnimatedBuilder(
       animation: _controller,
       builder: (BuildContext context, Widget? child) {
         return Transform.scale(
-          scale: widget.isActive ? _pulseAnimation.value : 0.97,
+          scale: shouldPulse ? _pulseAnimation.value : 0.97,
           child: Container(
             width: widget.size,
             height: widget.size,
@@ -80,9 +129,7 @@ class _RaikoVoiceOrbState extends State<RaikoVoiceOrb>
               gradient: RadialGradient(
                 colors: [
                   Colors.white.withValues(alpha: 0.9),
-                  widget.isActive
-                      ? RaikoColors.accentStrong
-                      : RaikoColors.accent.withValues(alpha: 0.5),
+                  stateColor,
                   const Color(0xFF14233F),
                 ],
                 stops: const [0.0, 0.25, 1.0],
@@ -94,8 +141,7 @@ class _RaikoVoiceOrbState extends State<RaikoVoiceOrb>
               boxShadow: [
                 BoxShadow(
                   color: glowColor.withValues(
-                    alpha:
-                        widget.isActive ? _glowAnimation.value : 0.15,
+                    alpha: widget.isActive ? _glowAnimation.value : 0.15,
                   ),
                   blurRadius: widget.isActive ? 48 : 20,
                   spreadRadius: widget.isActive ? 8 : 2,
@@ -112,7 +158,7 @@ class _RaikoVoiceOrbState extends State<RaikoVoiceOrb>
         );
       },
       child: Text(
-        widget.label,
+        _getStateLabel(),
         textAlign: TextAlign.center,
         style: Theme.of(context).textTheme.titleLarge?.copyWith(
               color: RaikoColors.backgroundDeep,

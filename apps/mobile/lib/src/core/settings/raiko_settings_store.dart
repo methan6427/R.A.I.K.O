@@ -14,6 +14,10 @@ class RaikoSettingsStore {
   static const String _websocketKey = 'raiko.backend.websocket_url';
   static const String _tokenKey = 'raiko.backend.auth_token';
   static const String _deviceNameKey = 'raiko.identity.device_name';
+  static const String _porcupineAccessKeyKey = 'raiko.voice.porcupine_access_key';
+  static const String _geminiApiKeyKey = 'raiko.voice.gemini_api_key';
+  static const String _confirmBeforeExecuteKey = 'raiko.voice.confirm_before_execute';
+  static const String _listeningTimeoutKey = 'raiko.voice.listening_timeout_seconds';
 
   final SharedPreferences? _prefs;
 
@@ -37,6 +41,8 @@ class RaikoSettingsStore {
 
   String? loadDeviceName() => _prefs?.getString(_deviceNameKey);
 
+  String? get deviceName => loadDeviceName();
+
   Future<void> saveDeviceName(String name) async {
     final prefs = _prefs;
     if (prefs == null) return;
@@ -45,6 +51,47 @@ class RaikoSettingsStore {
     } else {
       await prefs.setString(_deviceNameKey, name.trim());
     }
+  }
+
+  String? get porcupineAccessKey => _prefs?.getString(_porcupineAccessKeyKey);
+
+  Future<void> savePorcupineAccessKey(String key) async {
+    final prefs = _prefs;
+    if (prefs == null) return;
+    if (key.trim().isEmpty) {
+      await prefs.remove(_porcupineAccessKeyKey);
+    } else {
+      await prefs.setString(_porcupineAccessKeyKey, key.trim());
+    }
+  }
+
+  String? get geminiApiKey => _prefs?.getString(_geminiApiKeyKey);
+
+  Future<void> saveGeminiApiKey(String key) async {
+    final prefs = _prefs;
+    if (prefs == null) return;
+    if (key.trim().isEmpty) {
+      await prefs.remove(_geminiApiKeyKey);
+    } else {
+      await prefs.setString(_geminiApiKeyKey, key.trim());
+    }
+  }
+
+  bool? get confirmBeforeExecute => _prefs?.getBool(_confirmBeforeExecuteKey);
+
+  Future<void> saveConfirmBeforeExecute(bool value) async {
+    final prefs = _prefs;
+    if (prefs == null) return;
+    await prefs.setBool(_confirmBeforeExecuteKey, value);
+  }
+
+  int? get listeningTimeoutSeconds =>
+      _prefs?.getInt(_listeningTimeoutKey) ?? 10;
+
+  Future<void> saveListeningTimeout(int seconds) async {
+    final prefs = _prefs;
+    if (prefs == null) return;
+    await prefs.setInt(_listeningTimeoutKey, seconds);
   }
 
   Future<void> save(RaikoBackendConfig config) async {

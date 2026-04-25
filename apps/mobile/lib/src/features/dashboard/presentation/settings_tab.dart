@@ -3,11 +3,14 @@ import 'package:raiko_ui/raiko_ui.dart';
 import 'package:shared_theme/shared_theme.dart';
 
 import '../../../core/network/raiko_ws_client.dart';
+import '../../../core/settings/raiko_settings_store.dart';
+import 'voice_settings_panel.dart';
 
 class SettingsTab extends StatelessWidget {
   const SettingsTab({
     super.key,
     required this.client,
+    required this.settings,
     required this.baseHttpUrlController,
     required this.websocketUrlController,
     required this.authTokenController,
@@ -15,9 +18,11 @@ class SettingsTab extends StatelessWidget {
     required this.onApplyConnectionSettings,
     required this.onApplyIdentitySettings,
     required this.onConnect,
+    required this.onVoiceSettingsChanged,
   });
 
   final RaikoWsClient client;
+  final RaikoSettingsStore settings;
   final TextEditingController baseHttpUrlController;
   final TextEditingController websocketUrlController;
   final TextEditingController authTokenController;
@@ -25,6 +30,7 @@ class SettingsTab extends StatelessWidget {
   final VoidCallback onApplyConnectionSettings;
   final VoidCallback onApplyIdentitySettings;
   final Future<void> Function() onConnect;
+  final VoidCallback onVoiceSettingsChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -172,6 +178,13 @@ class SettingsTab extends StatelessWidget {
                 ),
             ],
           ),
+        ),
+        const SizedBox(height: 16),
+
+        // --- Voice settings ---
+        VoiceSettingsPanel(
+          settings: settings,
+          onSettingsChanged: onVoiceSettingsChanged,
         ),
         const SizedBox(height: 100),
       ],
