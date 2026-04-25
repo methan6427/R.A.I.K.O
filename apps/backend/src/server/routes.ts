@@ -1,5 +1,6 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { CommandSendPayload } from "@raiko/shared-types";
+import { createReadStream, unlinkSync } from "fs";
 import type { ModuleContainer } from "./module-container.js";
 
 export async function registerRoutes(app: FastifyInstance, modules: ModuleContainer): Promise<void> {
@@ -81,6 +82,55 @@ export async function registerRoutes(app: FastifyInstance, modules: ModuleContai
     return {
       status: result.ok ? "accepted" : "rejected",
       message: result.message,
+    };
+  });
+
+  app.post<{ Body: { text: string; voice?: string; speed?: number } }>(
+    "/api/tts",
+    async (request, reply) => {
+      if (!ensureAuthorized(modules, request, reply)) {
+        return;
+      }
+
+      const { text, voice, speed } = request.body;
+
+      if (!text || typeof text !== "string" || text.trim().length === 0) {
+        return reply.code(400).send({
+          error: "Invalid text parameter",
+        });
+      }
+
+      try {
+        const audioPath = await modules.voice.textToSpeech(text, { voice, speed });
+
+        reply.type("audio/wav");
+        const stream = createReadStream(audioPath);
+
+        stream.on("end", () => {
+          try {
+            unlinkSync(audioPath);
+          } catch {
+            // Ignore cleanup errors
+          }
+        });
+
+        return reply.send(stream);
+      } catch (error) {
+        return reply.code(500).send({
+          error: error instanceof Error ? error.message : "Text-to-speech failed",
+        });
+      }
+    },
+  );
+
+  app.get<{ Querystring: { available: string } }>("/api/tts/voices", async (request, reply) => {
+    if (!ensureAuthorized(modules, request, reply)) {
+      return;
+    }
+
+    const voices = await modules.voice.getAvailableVoices();
+    return {
+      voices,
     };
   });
 }

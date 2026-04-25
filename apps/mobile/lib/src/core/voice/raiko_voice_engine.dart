@@ -1,5 +1,11 @@
-import 'package:flutter/foundation.dart';
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter/foundation.dart';
+import 'package:path_provider/path_provider.dart';
+
 import '../network/raiko_ws_client.dart';
 import '../settings/raiko_settings_store.dart';
 import 'raiko_intent_parser.dart';
@@ -15,6 +21,7 @@ class RaikoVoiceEngine extends ChangeNotifier {
   late RaikoSpeechToText _stt;
   late RaikoIntentParser _intentParser;
   late AudioPlayer _audioPlayer;
+  late HttpClient _httpClient;
 
   RaikoVoiceState _state = RaikoVoiceState.idle;
   String? _lastError;
@@ -38,6 +45,7 @@ class RaikoVoiceEngine extends ChangeNotifier {
       _stt = RaikoSpeechToText();
       _intentParser = RaikoIntentParser();
       _audioPlayer = AudioPlayer();
+      _httpClient = HttpClient();
 
       await _wakeWordDetector.initialize(porcupineAccessKey);
       await _stt.initialize();
@@ -182,12 +190,55 @@ class RaikoVoiceEngine extends ChangeNotifier {
 
   Future<void> _playResponse(String text) async {
     try {
-      // TODO: Call backend /tts endpoint with text
-      // For now, just a placeholder
       _setState(RaikoVoiceState.speaking);
-      await Future.delayed(const Duration(seconds: 2));
+
+      // Fetch audio from backend TTS endpoint
+      final audioPath = await _fetchAudioFromBackend(text);
+      if (audioPath == null) {
+        await Future.delayed(const Duration(seconds: 1));
+        return;
+      }
+
+      // Play audio
+      await _audioPlayer.play(DeviceFileSource(audioPath));
+
+      // Wait for playback to finish
+      await _audioPlayer.onPlayerComplete.first;
     } catch (e) {
       _setError('Failed to play response: $e');
+    }
+  }
+
+  Future<String?> _fetchAudioFromBackend(String text) async {
+    try {
+      final uri = Uri.parse('${client.baseHttpUrl}/api/tts');
+      final request = await _httpClient.postUrl(uri);
+      request.headers.set('Content-Type', 'application/json');
+      request.headers.set('x-raiko-token', client.authToken);
+
+      final body = jsonEncode({
+        'text': text,
+        'voice': 'en_US-ryan-high',
+        'speed': 1.0,
+      });
+      request.contentLength = body.length;
+      request.write(body);
+
+      final response = await request.close().timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        final audioBytes = await response.expand((chunk) => chunk).toList();
+        final dir = await getTemporaryDirectory();
+        final file =
+            File('${dir.path}/raiko-audio-${DateTime.now().millisecondsSinceEpoch}.wav');
+        await file.writeAsBytes(audioBytes);
+        return file.path;
+      } else {
+        throw Exception('TTS failed: HTTP ${response.statusCode}');
+      }
+    } catch (e) {
+      _setError('Failed to fetch TTS: $e');
+      return null;
     }
   }
 
