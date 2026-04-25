@@ -1,6 +1,5 @@
 # Tell GitHub Linguist to ignore design exports and generated files
-*_standalone_.html linguist-documentation
-app-screenshots.html linguist-documentation
+*.html linguist-documentation
 apps/mobile/build/** linguist-generated
 node_modules/** linguist-vendored
 
