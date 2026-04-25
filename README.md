@@ -6,6 +6,98 @@ Fastify + WebSocket backend, which dispatches commands to a Windows agent runnin
 the target PCs. The agent can lock, sleep, restart, shut down, or open apps on the
 host, with realtime online/offline state surfaced back to the phone.
 
+## System Architecture
+
+```mermaid
+graph TB
+    Mobile["📱 Mobile App<br/>(Android/iOS)"]
+    Desktop["💻 Desktop App<br/>(Windows)"]
+    Backend["⚙️ Backend<br/>(Fastify + WebSocket)"]
+    Agent1["🖥️ Windows Agent<br/>(PC 1)"]
+    Agent2["🖥️ Windows Agent<br/>(PC 2)"]
+    DB["🗄️ PostgreSQL<br/>(Activity, Logs)"]
+    TTS["🎤 Piper TTS<br/>(Voice Synthesis)"]
+
+    Mobile -->|"WebSocket<br/>(commands, auth)"| Backend
+    Desktop -->|"WebSocket<br/>(commands, auth)"| Backend
+    Backend -->|"Command<br/>Dispatch"| Agent1
+    Backend -->|"Command<br/>Dispatch"| Agent2
+    Agent1 -->|"Status<br/>Heartbeat"| Backend
+    Agent2 -->|"Status<br/>Heartbeat"| Backend
+    Backend <-->|"Persistence"| DB
+    Backend <-->|"Text → Audio"| TTS
+    
+    style Mobile fill:#4f46e5,color:#fff
+    style Desktop fill:#4f46e5,color:#fff
+    style Backend fill:#06b6d4,color:#fff
+    style Agent1 fill:#8b5cf6,color:#fff
+    style Agent2 fill:#8b5cf6,color:#fff
+    style DB fill:#f59e0b,color:#fff
+    style TTS fill:#10b981,color:#fff
+```
+
+## Voice Command Flow
+
+```mermaid
+sequenceDiagram
+    participant User as 👤 User
+    participant Mobile as 📱 Mobile App
+    participant STT as 🎤 Speech-to-Text
+    participant Backend as ⚙️ Backend
+    participant Parser as 🧠 Intent Parser
+    participant Agent as 🖥️ Windows Agent
+    participant TTS as 🔊 Piper TTS
+
+    User->>Mobile: Say "Lock the PC"
+    Mobile->>STT: Activate microphone
+    STT->>STT: Listen for speech
+    STT->>Mobile: "lock the pc" (transcript)
+    Mobile->>Backend: /api/intent-parse
+    Backend->>Parser: Parse text + agents
+    Parser->>Backend: {command: lock, target, confidence}
+    Backend->>Agent: Dispatch lock command
+    Agent->>Agent: Execute lock
+    Agent->>Backend: Result success
+    Backend->>TTS: Generate response
+    TTS->>Backend: WAV audio
+    Backend->>Mobile: Play audio
+    Mobile->>User: 🔊 "PC locked"
+```
+
+## Command Dispatch Pipeline
+
+```mermaid
+graph LR
+    Client["Client<br/>(Mobile/Desktop)"]
+    Send["WebSocket<br/>Send"]
+    Queue["Command<br/>Queue"]
+    Dispatch["Dispatcher<br/>(Online Check)"]
+    Online["Agent Online?"]
+    DirectSend["Send to<br/>Agent"]
+    WoL["Wake-on-LAN<br/>Magic Packet"]
+    Execute["Execute<br/>Command"]
+    Response["Record<br/>Result"]
+    Return["Return to<br/>Client"]
+
+    Client -->|"CommandSend"| Send
+    Send --> Queue
+    Queue --> Dispatch
+    Dispatch --> Online
+    Online -->|"Yes"| DirectSend
+    Online -->|"No + WakeUp"| WoL
+    Online -->|"No + Other"| Response
+    DirectSend --> Execute
+    Execute --> Response
+    WoL --> Response
+    Response --> Return
+    
+    style Client fill:#4f46e5,color:#fff
+    style Online fill:#f59e0b,color:#000
+    style Execute fill:#10b981,color:#fff
+    style DirectSend fill:#10b981,color:#fff
+    style WoL fill:#8b5cf6,color:#fff
+```
+
 ## Quick Start with Docker
 
 Deploy the complete backend stack in one command:
@@ -82,6 +174,35 @@ docker-compose.yml       Complete stack with backend + PostgreSQL + Piper TTS
 ecosystem.config.cjs     pm2 config (alternative: run backend on a Windows host)
 ```
 
+## Monorepo Dependencies
+
+```mermaid
+graph TB
+    SharedTypes["📦 shared_types<br/>(TypeScript)"]
+    SharedTheme["📦 shared_theme<br/>(Flutter)"]
+    RaikoUI["📦 raiko_ui<br/>(Flutter)"]
+    
+    Backend["🔙 backend<br/>(Fastify)"]
+    Agent["🖥️ agent-windows<br/>(Node)"]
+    Mobile["📱 mobile<br/>(Flutter)"]
+    Desktop["💻 desktop<br/>(Flutter)"]
+    
+    SharedTypes -->|"TypeScript contracts"| Backend
+    SharedTypes -->|"TypeScript contracts"| Agent
+    SharedTheme -->|"Colors, Theme"| Mobile
+    SharedTheme -->|"Colors, Theme"| Desktop
+    RaikoUI -->|"Widgets, Components"| Mobile
+    RaikoUI -->|"Widgets, Components"| Desktop
+    
+    style SharedTypes fill:#f59e0b,color:#000
+    style SharedTheme fill:#f59e0b,color:#000
+    style RaikoUI fill:#f59e0b,color:#000
+    style Backend fill:#06b6d4,color:#fff
+    style Agent fill:#8b5cf6,color:#fff
+    style Mobile fill:#4f46e5,color:#fff
+    style Desktop fill:#4f46e5,color:#fff
+```
+
 ## Stack
 
 - **Flutter** — Mobile (Android/iOS) and desktop (Windows) apps, shared via the `raiko_ui` and
@@ -100,6 +221,46 @@ ecosystem.config.cjs     pm2 config (alternative: run backend on a Windows host)
 - **Wake-on-LAN** — UDP magic packet sender for powering on PCs remotely (port 9, standard).
 - **Docker / Docker Compose** — Production deployment: `docker-compose up -d` 
   starts backend + PostgreSQL + Piper TTS in Alpine containers.
+
+## Deployment Architecture
+
+```mermaid
+graph TB
+    subgraph Local["🏠 Local Development"]
+        DockerCompose["docker-compose.yml<br/>Backend + PostgreSQL + Piper"]
+    end
+
+    subgraph Coolify["☁️ Production Coolify"]
+        CF["Cloudflare<br/>DNS"]
+        LE["Let's Encrypt<br/>TLS"]
+        App["Backend<br/>Container"]
+        PG["PostgreSQL<br/>Container"]
+        Piper["Piper TTS<br/>Container"]
+    end
+
+    subgraph Agent["🖥️ Windows PC"]
+        AgentEXE["raiko-agent.exe<br/>+ config.json"]
+    end
+
+    Mobile["📱 Mobile App"]
+    Desktop["💻 Desktop App"]
+
+    LocalDev["💻 Dev Machine"]
+    LocalDev -->|"docker-compose up"| DockerCompose
+    
+    CF -->|"raiko.domain.com"| LE
+    LE --> App
+    App <-->|"Persist"| PG
+    App <-->|"TTS"| Piper
+    Mobile -->|"wss://raiko.domain.com/ws"| App
+    Desktop -->|"wss://raiko.domain.com/ws"| App
+    App -->|"Commands"| AgentEXE
+    AgentEXE -->|"Heartbeat"| App
+
+    style Local fill:#10b981,color:#fff
+    style Coolify fill:#06b6d4,color:#fff
+    style Agent fill:#8b5cf6,color:#fff
+```
 
 ## Features
 
@@ -136,6 +297,63 @@ ecosystem.config.cjs     pm2 config (alternative: run backend on a Windows host)
 - Last error message in settings panel
 - One-click reconnect/retry button
 - Full command history and activity log
+
+## Voice Engine State Machine
+
+```mermaid
+stateDiagram-v2
+    [*] --> Idle
+    
+    Idle -->|"User taps 'Start Voice'"| Listening
+    Idle -->|"Voice Modal Open"| Idle
+    
+    Listening -->|"Speech Detected"| Processing
+    Listening -->|"Timeout (10s)"| Error
+    Listening -->|"User Cancels"| Idle
+    
+    Processing -->|"Intent Parsed"| Confirming
+    Processing -->|"Parse Error"| Error
+    
+    Confirming -->|"Executing"| Executing
+    Confirming -->|"Cancel"| Idle
+    
+    Executing -->|"Command Sent"| Speaking
+    Executing -->|"Execution Error"| Error
+    
+    Speaking -->|"TTS Generated"| Speaking
+    Speaking -->|"Audio Playing"| Speaking
+    Speaking -->|"Playback Complete"| Idle
+    Speaking -->|"TTS Error"| Error
+    
+    Error -->|"Retry"| Listening
+    Error -->|"Dismiss"| Idle
+    Error -->|"Back"| Idle
+    
+    note right of Listening
+        Microphone active
+        Waveform: Amber
+        Status: "Listening..."
+    end note
+    
+    note right of Processing
+        Parsing intent
+        Rule matching
+        Confidence scoring
+    end note
+    
+    note right of Executing
+        WebSocket dispatch
+        Command queued
+        Waiting for result
+    end note
+    
+    note right of Speaking
+        Piper TTS
+        Audio playback
+        Waveform: Cyan
+        Status: "Speaking..."
+    end note
+```
 
 ## Standalone Windows Agent
 
