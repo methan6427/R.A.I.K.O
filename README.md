@@ -84,27 +84,58 @@ ecosystem.config.cjs     pm2 config (alternative: run backend on a Windows host)
 
 ## Stack
 
-- **Flutter** — mobile and desktop apps, shared via the `raiko_ui` and
+- **Flutter** — Mobile (Android/iOS) and desktop (Windows) apps, shared via the `raiko_ui` and
   `shared_theme` packages.
-- **Node.js + TypeScript** — backend and agent. Workspaces are managed at the repo
+- **Node.js + TypeScript** — Backend (Fastify) and Windows agent. Workspaces are managed at the repo
   root (`npm install` once).
-- **Fastify** — HTTP API.
-- **WebSocket (`ws`)** — realtime device registration, heartbeat, and command
-  dispatch.
-- **PostgreSQL** — persistence for devices, agents, activity, and command history.
-  Schema migrations run automatically on backend boot when
-  `RAIKO_RUN_MIGRATIONS=true`.
-- **Piper TTS** — high-quality text-to-speech synthesis with en_US-ryan-high voice.
-- **Docker / Docker Compose** — production deployment. Single command: 
-  `docker-compose up -d` starts backend + database + TTS engine.
+- **Fastify + WebSocket (`ws`)** — HTTP API with real-time WebSocket gateway for device registration, heartbeat, command dispatch, and status streaming.
+- **PostgreSQL** — Persistence for devices, agents, activity logs, and command history.
+  Auto-migrations run on backend boot when `RAIKO_RUN_MIGRATIONS=true`.
+- **Piper TTS** — High-quality text-to-speech synthesis (`en_US-ryan-high` voice model).
+  Generates 22050 Hz WAV files in ~1 second per sentence.
+- **Speech-to-Text** — Device microphone input via `speech_to_text` package (7.3.0).
+  Android permissions included, transcription works offline locally.
+- **Rule-Based Intent Parser** — Backend command parsing (no API keys, no quota limits).
+  Handles lock, sleep, restart, shutdown, open_app, wake_up, open_remote_desktop, set_name.
+- **Wake-on-LAN** — UDP magic packet sender for powering on PCs remotely (port 9, standard).
+- **Docker / Docker Compose** — Production deployment: `docker-compose up -d` 
+  starts backend + PostgreSQL + Piper TTS in Alpine containers.
 
-## Mobile App Highlights
+## Features
 
-- Per-device persistent UUID (no more hardcoded `mobile-android-01`).
-- Backend URL + auth token persisted via `shared_preferences`.
-- Auto-reconnect with exponential backoff and a `Connecting…` button state.
-- Snackbars surface connection errors and command results.
-- Glassmorphism dashboard, animated voice orb, modular feature folders.
+### Voice Command System
+- **Real Speech-to-Text**: Microphone input via `speech_to_text` package (7.3.0)
+- **Intent Parsing**: Rule-based command parser on backend (no API keys, works offline)
+- **Text-to-Speech**: High-quality Piper TTS with `en_US-ryan-high` voice model
+- **Animated Waveform**: Dual-color visualization (amber for user, cyan for assistant)
+- **Voice Modal UI**: Glassmorphism design with suggestion chips and manual input
+
+### Device Control Commands
+- **Lock**: Lock Windows workstation
+- **Sleep**: Put PC into sleep mode
+- **Restart**: Reboot the system
+- **Shutdown**: Power down the PC
+- **Wake-on-LAN**: Power on PCs remotely (requires WoL enabled in BIOS)
+- **Open App**: Launch any Windows application
+- **Remote Desktop**: Launch AnyDesk for full remote control
+- **Device Naming**: Set custom agent names
+
+### Mobile App Highlights
+- Per-device persistent UUID (no hardcoded IDs)
+- Backend URL + auth token persisted via `shared_preferences`
+- Auto-reconnect with exponential backoff and real-time `Connecting…` state
+- Snackbars surface connection errors and command results
+- Real-time WebSocket connection status with error details
+- Four-screen shell: Home (Dashboard), Devices, Activity, and Settings
+- Floating voice relay button with voice modal and suggestion phrases
+
+### Connection Management
+- Real-time WebSocket status indicator (connected/connecting/disconnected)
+- Color-coded status (green/yellow/red)
+- Connected agent count display
+- Last error message in settings panel
+- One-click reconnect/retry button
+- Full command history and activity log
 
 ## Standalone Windows Agent
 
@@ -128,8 +159,17 @@ Drop `raiko-agent.exe` and a filled-out `config.json` in the same folder on the
 target Windows machine and double-click. The agent reads the config beside the
 binary, opens a WebSocket to the backend, and registers itself.
 
-Supported commands: `shutdown`, `restart`, `sleep`, `lock`, `open_app`. Set
-`"dryRun": true` in the config for a safe smoke test.
+**Supported commands:**
+- `shutdown` — Power down the PC
+- `restart` — Reboot the system
+- `sleep` — Enter sleep mode
+- `lock` — Lock the workstation
+- `open_app` — Launch any Windows application
+- `wake_up` — Receive Wake-on-LAN magic packets (requires WoL enabled in BIOS)
+- `open_remote_desktop` — Launch AnyDesk for remote control
+- `set_name` — Update agent display name
+
+Set `"dryRun": true` in the config for a safe smoke test (commands log but don't execute).
 
 ## Workspace Commands
 
