@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
 import { AgentCommand, type CommandDispatchPayload, type CommandResultPayload } from "@raiko/shared-types";
+import { WolSender } from "../network/wol-sender.js";
 
 export interface CommandHandlerOptions {
   dryRun?: boolean;
@@ -16,6 +17,21 @@ export async function handleCommand(
   options: CommandHandlerOptions = {},
 ): Promise<CommandResultPayload> {
   try {
+    // Handle WOL separately since it uses UDP broadcast, not Windows commands
+    if (payload.action === AgentCommand.WakeUp) {
+      const macAddress = payload.args?.macAddress;
+      if (typeof macAddress !== "string" || macAddress.trim().length === 0) {
+        return result(payload, "failed", "wake_up requires args.macAddress");
+      }
+
+      if (options.dryRun) {
+        return result(payload, "success", `Dry run: Would send WOL packet to ${macAddress}`);
+      }
+
+      await WolSender.send(macAddress);
+      return result(payload, "success", `Sent WOL magic packet to ${macAddress}`);
+    }
+
     const plan = buildExecutionPlan(payload);
     if (!plan) {
       return result(payload, "failed", `Unsupported action: ${payload.action}`);

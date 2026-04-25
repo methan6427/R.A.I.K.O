@@ -19,27 +19,17 @@ class VoiceSettingsPanel extends StatefulWidget {
 }
 
 class _VoiceSettingsPanelState extends State<VoiceSettingsPanel> {
-  late final TextEditingController _porcupineKeyController;
   late bool _confirmBeforeExecute;
   late int _listeningTimeout;
 
   @override
   void initState() {
     super.initState();
-    _porcupineKeyController =
-        TextEditingController(text: widget.settings.porcupineAccessKey ?? '');
     _confirmBeforeExecute = widget.settings.confirmBeforeExecute ?? true;
     _listeningTimeout = widget.settings.listeningTimeoutSeconds ?? 10;
   }
 
-  @override
-  void dispose() {
-    _porcupineKeyController.dispose();
-    super.dispose();
-  }
-
   Future<void> _saveSettings() async {
-    await widget.settings.savePorcupineAccessKey(_porcupineKeyController.text);
     await widget.settings.saveConfirmBeforeExecute(_confirmBeforeExecute);
     await widget.settings.saveListeningTimeout(_listeningTimeout);
     widget.onSettingsChanged();
@@ -66,25 +56,6 @@ class _VoiceSettingsPanelState extends State<VoiceSettingsPanel> {
                     ),
               ),
             ],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'API Keys',
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: RaikoColors.textMuted,
-                  fontWeight: FontWeight.w600,
-                ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _porcupineKeyController,
-            decoration: const InputDecoration(
-              labelText: 'Porcupine Access Key',
-              helperText: 'From picovoice.ai for wake word detection',
-              prefixIcon: Icon(Icons.vpn_key_rounded, size: 18),
-              isDense: true,
-            ),
-            obscureText: true,
           ),
           const SizedBox(height: 16),
           Text(
