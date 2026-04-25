@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  # PostgreSQL database for R.A.I.K.O
+  postgres:
+    image: postgres:16-alpine
+    container_name: raiko-db
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-raiko}
+      POSTGRES_USER: ${POSTGRES_USER:-raiko}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-raiko_secure_password}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-raiko}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - raiko-network
+
+  # R.A.I.K.O Backend API Server
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: raiko-backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Database Configuration
+      RAIKO_DATABASE_URL: postgresql://${POSTGRES_USER:-raiko}:${POSTGRES_PASSWORD:-raiko_secure_password}@postgres:5432/${POSTGRES_DB:-raiko}
+      RAIKO_DATABASE_SSL_MODE: ${RAIKO_DATABASE_SSL_MODE:-disable}
+      RAIKO_RUN_MIGRATIONS: "true"
+
+      # Server Configuration
+      RAIKO_HOST: 0.0.0.0
+      RAIKO_PORT: 8080
+
+      # Security
+      RAIKO_AUTH_TOKEN: ${RAIKO_AUTH_TOKEN:-change-me-in-production}
+
+      # TTS Configuration
+      PIPER_HOME: /app/piper
+      PIPER_VOICE_MODEL: en_US-ryan-high
+
+      # Node Environment
+      NODE_ENV: production
+    ports:
+      - "${RAIKO_PORT:-8080}:8080"
+    volumes:
+      # Optional: mount logs directory
+      - ./logs:/app/logs
+      # Piper voice models (optional: persist across restarts)
+      - piper_voices:/app/piper/voices
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8080/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
+    networks:
+      - raiko-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+  piper_voices:
+    driver: local
+
+networks:
+  raiko-network:
+    driver: bridge

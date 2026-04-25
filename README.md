@@ -6,6 +6,28 @@ Fastify + WebSocket backend, which dispatches commands to a Windows agent runnin
 the target PCs. The agent can lock, sleep, restart, shut down, or open apps on the
 host, with realtime online/offline state surfaced back to the phone.
 
+## Quick Start with Docker
+
+Deploy the complete backend stack in one command:
+
+```bash
+# Copy configuration template
+cp .env.example .env
+
+# Start backend + database with Docker Compose
+docker-compose up -d
+
+# Check status
+docker-compose ps
+
+# View logs
+docker-compose logs -f backend
+```
+
+The backend API will be available at `http://localhost:8080`.
+
+For detailed Docker deployment instructions, see [DOCKER_DEPLOYMENT.md](DOCKER_DEPLOYMENT.md).
+
 ## Mobile App Screenshots
 
 <div style="display: flex; gap: 10px; overflow-x: auto; padding: 10px 0; scroll-behavior: smooth;">
@@ -52,7 +74,10 @@ docs/
   PRODUCTION_PLAN.md      Deploy roadmap (Coolify + Cloudflare)
   STATUS_REPORT.md        Latest snapshot
 
+.env.example              Configuration template for Docker deployment
+DOCKER_DEPLOYMENT.md      Docker & Docker Compose deployment guide
 Dockerfile               Multi-stage Alpine Node 22 image for the backend
+docker-compose.yml       Complete stack with backend + PostgreSQL + Piper TTS
 .dockerignore            Excludes Flutter apps, docs, and bundle artefacts
 ecosystem.config.cjs     pm2 config (alternative: run backend on a Windows host)
 ```
@@ -69,8 +94,9 @@ ecosystem.config.cjs     pm2 config (alternative: run backend on a Windows host)
 - **PostgreSQL** — persistence for devices, agents, activity, and command history.
   Schema migrations run automatically on backend boot when
   `RAIKO_RUN_MIGRATIONS=true`.
-- **Docker / Coolify** — production deployment path. The bundled `Dockerfile`
-  builds the backend into a single Alpine image.
+- **Piper TTS** — high-quality text-to-speech synthesis with en_US-ryan-high voice.
+- **Docker / Docker Compose** — production deployment. Single command: 
+  `docker-compose up -d` starts backend + database + TTS engine.
 
 ## Mobile App Highlights
 
