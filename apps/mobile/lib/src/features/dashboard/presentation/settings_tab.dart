@@ -4,6 +4,7 @@ import 'package:shared_theme/shared_theme.dart';
 
 import '../../../core/network/raiko_ws_client.dart';
 import '../../../core/settings/raiko_settings_store.dart';
+import 'connection_status_panel.dart';
 import 'voice_settings_panel.dart';
 
 class SettingsTab extends StatelessWidget {
@@ -121,6 +122,13 @@ class SettingsTab extends StatelessWidget {
               ),
             ],
           ),
+        ),
+        const SizedBox(height: 16),
+
+        // --- Connection status ---
+        ConnectionStatusPanel(
+          client: client,
+          onReconnect: onConnect,
         ),
         const SizedBox(height: 16),
 

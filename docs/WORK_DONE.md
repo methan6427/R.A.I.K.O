@@ -452,6 +452,47 @@ Architecture Improvements:
 3. **Simplicity**: Mobile app initialization no longer requires Gemini key
 4. **Maintainability**: Intent parsing logic centralized on backend
 
+## Phase 8: Connection Status Display & Error Recovery
+
+Status: completed
+
+What was done:
+- Created ConnectionStatusPanel widget for real-time status display
+  - Shows WebSocket connection status (connected, connecting, disconnected)
+  - Color-coded status indicator (green/yellow/red)
+  - Displays current WebSocket URL
+  - Shows connected agent count
+  - Shows last error message in error detail section
+  - Retry button when disconnected
+- Integrated ConnectionStatusPanel into Settings tab
+  - Displayed alongside backend endpoint configuration
+  - Real-time updates as connection state changes
+  - Retry/reconnect functionality via existing client.reconnect() method
+- Added error recovery for voice commands
+  - Voice console shows error messages from voice engine
+  - Manual text input allows bypassing STT errors
+  - Backend /api/intent-parse works reliably without API key quota limits
+
+Files created:
+- `apps/mobile/lib/src/features/dashboard/presentation/connection_status_panel.dart`
+
+Files updated:
+- `apps/mobile/lib/src/features/dashboard/presentation/settings_tab.dart` (integrated status panel)
+
+Validation:
+- ✓ `flutter analyze` - 0 issues
+- ✓ `flutter build apk --debug` - APK built successfully
+- ✓ Connection status panel displays correctly
+- ✓ Retry button enabled when disconnected
+- ✓ Shows agent count and error details
+
+Connection Status Complete:
+- Real-time WebSocket status with color-coded indicator
+- Backend URL and connection details displayed
+- Error messages shown with context
+- Quick reconnect/retry functionality
+- Agent connectivity overview
+
 ## Validation
 
 Completed checks:
