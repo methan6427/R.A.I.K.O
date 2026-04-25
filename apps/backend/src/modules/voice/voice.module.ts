@@ -1,7 +1,9 @@
-import { createWriteStream } from "fs";
+import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
 import { randomBytes } from "crypto";
 import { join } from "path";
-import { tmpdir } from "os";
+import { tmpdir, homedir } from "os";
+
 
 export interface TTSOptions {
   voice?: string | undefined;
@@ -9,12 +11,15 @@ export interface TTSOptions {
 }
 
 export class VoiceModule {
+  private piperPath = join(homedir(), "AppData", "Local", "Piper", "piper.exe");
+  private voiceModelDir = join(homedir(), ".local", "share", "piper", "voices");
+  private defaultVoice = "en_US-ryan-high";
+
   constructor() {}
 
   /**
-   * Convert text to speech
+   * Convert text to speech using Piper
    * Returns path to generated WAV file
-   * In production, integrate with Piper TTS or similar offline engine
    */
   async textToSpeech(text: string, options: TTSOptions = {}): Promise<string> {
     try {
@@ -22,23 +27,51 @@ export class VoiceModule {
         throw new Error("Text cannot be empty");
       }
 
-      const voice = options.voice ?? "en_US-ryan-high";
-      const speed = options.speed ?? 1.0;
+      // Voice selection (defaults to high-quality Ryan voice)
+      const voice = options.voice ?? this.defaultVoice;
+      const voiceModelPath = join(this.voiceModelDir, `${voice}.onnx`);
 
-      // Placeholder: Generate a minimal WAV file
-      // In production, call actual TTS engine (Piper, Google Cloud, etc.)
-      const audioBuffer = await this._generatePlaceholderAudio(text.length);
+      if (!existsSync(voiceModelPath)) {
+        throw new Error(
+          `Voice model not found: ${voiceModelPath}. Download voice models to: ${this.voiceModelDir}`,
+        );
+      }
 
+      // Generate output file path
       const filename = `raiko-tts-${randomBytes(8).toString("hex")}.wav`;
       const filepath = join(tmpdir(), filename);
 
+      // Speed control: Piper uses --length-scale (1.0 = normal, <1.0 = faster, >1.0 = slower)
+      const speed = options.speed ?? 1.0;
+      const lengthScale = (2.0 - speed).toString(); // Invert: speed 0.5 -> scale 1.5 (slower)
+
+      // Execute Piper to generate WAV file
       await new Promise<void>((resolve, reject) => {
-        const stream = createWriteStream(filepath);
-        stream.on("error", reject);
-        stream.on("finish", resolve);
-        stream.write(audioBuffer);
-        stream.end();
+        const child = spawn(this.piperPath, [
+          "--model",
+          voiceModelPath,
+          "--output-file",
+          filepath,
+          "--length-scale",
+          lengthScale,
+        ]);
+
+        child.stdin.write(text);
+        child.stdin.end();
+
+        child.on("error", reject);
+        child.on("close", (code) => {
+          if (code === 0) {
+            resolve();
+          } else {
+            reject(new Error(`Piper exited with code ${code}`));
+          }
+        });
       });
+
+      if (!existsSync(filepath)) {
+        throw new Error("Failed to generate audio file");
+      }
 
       return filepath;
     } catch (e) {
@@ -47,61 +80,15 @@ export class VoiceModule {
   }
 
   /**
-   * Get available voices
-   * In production, return actual TTS engine voices
+   * Get available voices (Piper voices)
    */
   async getAvailableVoices(): Promise<string[]> {
     return [
       "en_US-ryan-high",
       "en_US-ryan-medium",
       "en_US-ryan-low",
-      "en_US-amy-medium",
-      "en_US-male-en_US",
+      "en_GB-alan-medium",
+      "en_GB-jenny_dioco-medium",
     ];
-  }
-
-  /**
-   * Generate a minimal WAV file as placeholder
-   * Duration based on text length for realistic audio
-   */
-  private async _generatePlaceholderAudio(textLength: number): Promise<Buffer> {
-    // Estimate duration: ~100ms per word, minimum 500ms
-    const wordCount = Math.max(1, Math.ceil(textLength / 5));
-    const durationMs = Math.max(500, wordCount * 100);
-    const sampleRate = 22050;
-    const samples = (sampleRate * durationMs) / 1000;
-
-    // WAV header (44 bytes)
-    const header = Buffer.alloc(44);
-    const writeUint32 = (offset: number, value: number) => {
-      header.writeUInt32LE(value, offset);
-    };
-    const writeUint16 = (offset: number, value: number) => {
-      header.writeUInt16LE(value, offset);
-    };
-
-    // RIFF header
-    header.write("RIFF", 0);
-    writeUint32(4, 36 + samples * 2); // File size - 8
-    header.write("WAVE", 8);
-
-    // fmt sub-chunk
-    header.write("fmt ", 12);
-    writeUint32(16, 16); // Subchunk1Size
-    writeUint16(20, 1); // AudioFormat (1 = PCM)
-    writeUint16(22, 1); // NumChannels (mono)
-    writeUint32(24, sampleRate); // SampleRate
-    writeUint32(28, sampleRate * 2); // ByteRate
-    writeUint16(32, 2); // BlockAlign
-    writeUint16(34, 16); // BitsPerSample
-
-    // data sub-chunk
-    header.write("data", 36);
-    writeUint32(40, samples * 2);
-
-    // Generate silent audio data (zeros)
-    const audioData = Buffer.alloc(samples * 2);
-
-    return Buffer.concat([header, audioData]);
   }
 }

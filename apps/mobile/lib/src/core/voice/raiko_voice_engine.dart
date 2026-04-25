@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../network/raiko_ws_client.dart';
+import '../remote/anydesk_integration.dart';
 import '../settings/raiko_settings_store.dart';
 import 'raiko_intent_parser.dart';
 import 'raiko_speech_to_text.dart';
@@ -22,10 +23,16 @@ class RaikoVoiceEngine extends ChangeNotifier {
   late RaikoIntentParser _intentParser;
   late AudioPlayer _audioPlayer;
   late HttpClient _httpClient;
+  late AnyDeskIntegration _anydesk;
 
   RaikoVoiceState _state = RaikoVoiceState.idle;
   String? _lastError;
   bool _initialized = false;
+
+  // UI display state
+  String? _transcribedText;
+  RaikoIntent? _parsedIntent;
+  String? _responseText;
 
   RaikoVoiceEngine({
     required this.client,
@@ -35,10 +42,12 @@ class RaikoVoiceEngine extends ChangeNotifier {
   RaikoVoiceState get state => _state;
   String? get lastError => _lastError;
   bool get isInitialized => _initialized;
+  String? get transcribedText => _transcribedText;
+  RaikoIntent? get parsedIntent => _parsedIntent;
+  String? get responseText => _responseText;
 
   Future<void> initialize({
-    required String porcupineAccessKey,
-    required String geminiApiKey,
+    String? porcupineAccessKey,
   }) async {
     try {
       _wakeWordDetector = RaikoWakeWordDetector();
@@ -46,10 +55,13 @@ class RaikoVoiceEngine extends ChangeNotifier {
       _intentParser = RaikoIntentParser();
       _audioPlayer = AudioPlayer();
       _httpClient = HttpClient();
+      _anydesk = AnyDeskIntegration();
 
-      await _wakeWordDetector.initialize(porcupineAccessKey);
+      if (porcupineAccessKey != null && porcupineAccessKey.isNotEmpty) {
+        await _wakeWordDetector.initialize(porcupineAccessKey);
+      }
       await _stt.initialize();
-      await _intentParser.initialize(geminiApiKey);
+      await _intentParser.initialize(client.baseHttpUrl, client.authToken);
 
       _initialized = true;
       _state = RaikoVoiceState.idle;
@@ -60,6 +72,29 @@ class RaikoVoiceEngine extends ChangeNotifier {
       _state = RaikoVoiceState.error;
       notifyListeners();
       rethrow;
+    }
+  }
+
+  /// Open remote desktop via AnyDesk
+  Future<void> openRemoteDesktop() async {
+    if (!_initialized) {
+      _setError('Voice engine not initialized');
+      return;
+    }
+    await _openRemoteDesktop();
+  }
+
+  /// Process a text command directly (for testing without speech)
+  Future<void> processTextCommand(String text) async {
+    if (!_initialized) {
+      _setError('Voice engine not initialized');
+      return;
+    }
+
+    try {
+      await _processTranscribedText(text);
+    } catch (e) {
+      _setError(e.toString());
     }
   }
 
@@ -80,6 +115,17 @@ class RaikoVoiceEngine extends ChangeNotifier {
         return;
       }
 
+      await _processTranscribedText(transcribedText);
+    } catch (e) {
+      _setError(e.toString());
+    }
+  }
+
+  Future<void> _processTranscribedText(String transcribedText) async {
+    try {
+      _transcribedText = transcribedText;
+      notifyListeners();
+
       _setState(RaikoVoiceState.processing);
 
       // Parse intent
@@ -88,6 +134,9 @@ class RaikoVoiceEngine extends ChangeNotifier {
         client.agents.map((a) => a.name).toList(),
         client.deviceName,
       );
+
+      _parsedIntent = intent;
+      notifyListeners();
 
       // Handle special commands
       if (intent.command == 'set_name') {
@@ -100,6 +149,11 @@ class RaikoVoiceEngine extends ChangeNotifier {
       if (intent.command == 'ask_clarification') {
         _playResponse('Could you please repeat that? I didn\'t quite understand.');
         _setState(RaikoVoiceState.idle);
+        return;
+      }
+
+      if (intent.command == 'open_remote_desktop') {
+        await _openRemoteDesktop();
         return;
       }
 
@@ -183,14 +237,35 @@ class RaikoVoiceEngine extends ChangeNotifier {
         return '$targets is restarting.';
       case 'shutdown':
         return '$targets is shutting down.';
+      case 'open_remote_desktop':
+        return 'Opening AnyDesk remote desktop.';
       default:
         return 'Command executed on $targets.';
     }
   }
 
+  Future<void> _openRemoteDesktop() async {
+    try {
+      _setState(RaikoVoiceState.executing);
+
+      final launched = await _anydesk.launch();
+      if (launched) {
+        _setState(RaikoVoiceState.speaking);
+        await _playResponse('Opening AnyDesk for remote desktop access.');
+        _setState(RaikoVoiceState.idle);
+      } else {
+        _setError('AnyDesk not found or cannot launch. Please install it first.');
+      }
+    } catch (e) {
+      _setError('Failed to open remote desktop: $e');
+    }
+  }
+
   Future<void> _playResponse(String text) async {
     try {
+      _responseText = text;
       _setState(RaikoVoiceState.speaking);
+      notifyListeners();
 
       // Fetch audio from backend TTS endpoint
       final audioPath = await _fetchAudioFromBackend(text);
@@ -245,6 +320,14 @@ class RaikoVoiceEngine extends ChangeNotifier {
   void _setState(RaikoVoiceState newState) {
     _state = newState;
     _lastError = null;
+
+    // Clear display state when returning to idle
+    if (newState == RaikoVoiceState.idle) {
+      _transcribedText = null;
+      _parsedIntent = null;
+      _responseText = null;
+    }
+
     notifyListeners();
   }
 

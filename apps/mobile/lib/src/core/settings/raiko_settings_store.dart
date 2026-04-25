@@ -15,7 +15,6 @@ class RaikoSettingsStore {
   static const String _tokenKey = 'raiko.backend.auth_token';
   static const String _deviceNameKey = 'raiko.identity.device_name';
   static const String _porcupineAccessKeyKey = 'raiko.voice.porcupine_access_key';
-  static const String _geminiApiKeyKey = 'raiko.voice.gemini_api_key';
   static const String _confirmBeforeExecuteKey = 'raiko.voice.confirm_before_execute';
   static const String _listeningTimeoutKey = 'raiko.voice.listening_timeout_seconds';
 
@@ -62,18 +61,6 @@ class RaikoSettingsStore {
       await prefs.remove(_porcupineAccessKeyKey);
     } else {
       await prefs.setString(_porcupineAccessKeyKey, key.trim());
-    }
-  }
-
-  String? get geminiApiKey => _prefs?.getString(_geminiApiKeyKey);
-
-  Future<void> saveGeminiApiKey(String key) async {
-    final prefs = _prefs;
-    if (prefs == null) return;
-    if (key.trim().isEmpty) {
-      await prefs.remove(_geminiApiKeyKey);
-    } else {
-      await prefs.setString(_geminiApiKeyKey, key.trim());
     }
   }
 

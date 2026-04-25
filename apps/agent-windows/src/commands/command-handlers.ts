@@ -79,6 +79,25 @@ export function buildExecutionPlan(payload: CommandDispatchPayload): CommandExec
         summary: `Executed ${path}${normalizedArgs.length > 0 ? ` ${normalizedArgs.join(" ")}` : ""}`,
       };
     }
+    case AgentCommand.OpenRemoteDesktop: {
+      const path = payload.args?.path;
+      const anydesk = (typeof path === "string" ? path : "C:\\Program Files (x86)\\AnyDesk\\AnyDesk.exe");
+      const session = payload.args?.session;
+
+      if (session && typeof session === "string" && session.trim().length > 0) {
+        return {
+          command: anydesk,
+          args: [session, "--session", session],
+          summary: `Opened AnyDesk remote desktop session`,
+        };
+      }
+
+      return {
+        command: anydesk,
+        args: [],
+        summary: `Opened AnyDesk for unattended access`,
+      };
+    }
     default:
       return undefined;
   }

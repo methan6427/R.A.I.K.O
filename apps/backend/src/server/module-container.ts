@@ -16,6 +16,7 @@ import { SettingsModule } from "../modules/settings/settings.module.js";
 import { PostgresUserRepository } from "../modules/users/user.repository.js";
 import { UsersModule } from "../modules/users/users.module.js";
 import { VoiceModule } from "../modules/voice/voice.module.js";
+import { IntentParser } from "../modules/intent/intent-parser.js";
 
 export class ModuleContainer {
   readonly auth: AuthModule;
@@ -27,6 +28,7 @@ export class ModuleContainer {
   readonly settings: SettingsModule;
   readonly users: UsersModule;
   readonly voice: VoiceModule;
+  readonly intent: IntentParser;
 
   private constructor(params: {
     auth: AuthModule;
@@ -38,6 +40,7 @@ export class ModuleContainer {
     settings: SettingsModule;
     users: UsersModule;
     voice: VoiceModule;
+    intent: IntentParser;
   }) {
     this.auth = params.auth;
     this.activity = params.activity;
@@ -48,6 +51,7 @@ export class ModuleContainer {
     this.settings = params.settings;
     this.users = params.users;
     this.voice = params.voice;
+    this.intent = params.intent;
   }
 
   static async create(
@@ -83,6 +87,7 @@ export class ModuleContainer {
     );
     const automation = new AutomationModule();
     const voice = new VoiceModule();
+    const intent = new IntentParser();
 
     await devices.reconcileStartupState();
     await users.ensureBootstrapUser();
@@ -98,6 +103,7 @@ export class ModuleContainer {
       settings,
       users,
       voice,
+      intent,
     });
   }
 }
