@@ -8,6 +8,8 @@ import '../../../core/config/raiko_backend_config.dart';
 import '../../../core/identity/raiko_identity.dart';
 import '../../../core/network/raiko_ws_client.dart';
 import '../../../core/settings/raiko_settings_store.dart';
+import '../../../core/voice/raiko_voice_engine.dart';
+import '../../../core/voice/voice_models.dart';
 import 'activity_tab.dart';
 import 'devices_tab.dart';
 import 'home_tab.dart';
@@ -33,6 +35,7 @@ class MobileDashboardScreen extends StatefulWidget {
 
 class _MobileDashboardScreenState extends State<MobileDashboardScreen> {
   late final RaikoWsClient client;
+  late final RaikoVoiceEngine voiceEngine;
   late final TextEditingController baseHttpUrlController;
   late final TextEditingController websocketUrlController;
   late final TextEditingController authTokenController;
@@ -51,6 +54,13 @@ class _MobileDashboardScreenState extends State<MobileDashboardScreen> {
       kind: 'mobile',
       initialConfig: widget.initialBackendConfig,
     )..addListener(_onChanged);
+
+    voiceEngine = RaikoVoiceEngine(
+      client: client,
+      settings: widget.settings,
+    );
+    _initializeVoiceEngine();
+
     baseHttpUrlController = TextEditingController(text: client.baseHttpUrl);
     websocketUrlController = TextEditingController(text: client.websocketUrl);
     authTokenController = TextEditingController(text: client.authToken);
@@ -60,12 +70,47 @@ class _MobileDashboardScreenState extends State<MobileDashboardScreen> {
     }
   }
 
+  Future<void> _initializeVoiceEngine() async {
+    final porcupineKey = widget.settings.porcupineAccessKey ?? '';
+    final geminiKey = widget.settings.geminiApiKey ?? '';
+
+    if (porcupineKey.isEmpty || geminiKey.isEmpty) {
+      if (mounted) {
+        voiceEngine.addListener(_onVoiceEngineChanged);
+      }
+      return;
+    }
+
+    try {
+      await voiceEngine.initialize(
+        porcupineAccessKey: porcupineKey,
+        geminiApiKey: geminiKey,
+      );
+      if (mounted) {
+        voiceEngine.addListener(_onVoiceEngineChanged);
+        setState(() {});
+      }
+    } catch (e) {
+      if (mounted) {
+        voiceEngine.addListener(_onVoiceEngineChanged);
+      }
+    }
+  }
+
+  void _onVoiceEngineChanged() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
   @override
   void dispose() {
     baseHttpUrlController.dispose();
     websocketUrlController.dispose();
     authTokenController.dispose();
     deviceNameController.dispose();
+    voiceEngine.removeListener(_onVoiceEngineChanged);
+    voiceEngine.dispose();
     client.removeListener(_onChanged);
     client.disconnect();
     client.dispose();
@@ -180,99 +225,156 @@ class _MobileDashboardScreenState extends State<MobileDashboardScreen> {
     await client.loadOverview();
   }
 
+  Future<void> _activateVoiceEngine() async {
+    try {
+      await voiceEngine.activate();
+    } catch (e) {
+      if (mounted) {
+        _showSnack(
+          'Voice error: $e',
+          color: RaikoColors.danger,
+          icon: Icons.error_outline_rounded,
+        );
+      }
+    }
+  }
+
   void _showVoiceConsole() {
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (BuildContext context) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-          child: RaikoCard(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setState) {
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+              child: RaikoCard(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(
-                      Icons.mic_rounded,
-                      color: RaikoColors.accentStrong,
-                      size: 20,
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.mic_rounded,
+                          color: RaikoColors.accentStrong,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Voice Relay',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleMedium
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                              ),
+                              if (voiceEngine.lastError != null)
+                                Text(
+                                  'Error: ${voiceEngine.lastError}',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodySmall
+                                      ?.copyWith(
+                                        color: RaikoColors.danger,
+                                      ),
+                                )
+                              else
+                                Text(
+                                  'Voice commands for agent control.',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodySmall
+                                      ?.copyWith(
+                                        color: RaikoColors.textSecondary,
+                                      ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(height: 20),
+                    if (!voiceEngine.isInitialized)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: Text(
+                          'Voice engine not configured. Add API keys in Settings.',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: RaikoColors.warning,
+                              ),
+                        ),
+                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: RaikoButton(
+                            label: voiceEngine.state == RaikoVoiceState.listening
+                                ? 'Listening...'
+                                : (voiceEngine.state == RaikoVoiceState.processing
+                                    ? 'Processing...'
+                                    : 'Start Voice'),
+                            icon: Icons.mic_rounded,
+                            onPressed: (client.selectedAgentId.isEmpty ||
+                                    !voiceEngine.isInitialized ||
+                                    voiceEngine.state != RaikoVoiceState.idle)
+                                ? null
+                                : () {
+                                    unawaited(_activateVoiceEngine());
+                                    setState(() {});
+                                  },
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: RaikoButton(
+                            label: 'Lock',
+                            icon: Icons.lock_outline_rounded,
+                            isSecondary: true,
+                            onPressed: client.selectedAgentId.isEmpty
+                                ? null
+                                : () {
+                                    Navigator.of(context).pop();
+                                    client.sendCommand('lock');
+                                  },
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
                     Text(
-                      'Voice Relay',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
+                      'Try saying:',
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                            color: RaikoColors.textMuted,
                           ),
                     ),
+                    const SizedBox(height: 8),
+                    for (final phrase in const [
+                      '"Raiko, lock the office PC"',
+                      '"Raiko, restart my workstation"',
+                      '"Raiko, put the desktop to sleep"',
+                    ])
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Text(
+                          phrase,
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: RaikoColors.textSecondary,
+                                fontStyle: FontStyle.italic,
+                              ),
+                        ),
+                      ),
                   ],
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  'Voice commands for agent control.',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: RaikoColors.textSecondary,
-                      ),
-                ),
-                const SizedBox(height: 20),
-                Row(
-                  children: [
-                    Expanded(
-                      child: RaikoButton(
-                        label: 'Lock',
-                        icon: Icons.lock_outline_rounded,
-                        onPressed: client.selectedAgentId.isEmpty
-                            ? null
-                            : () {
-                                Navigator.of(context).pop();
-                                client.sendCommand('lock');
-                              },
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: RaikoButton(
-                        label: 'Sleep',
-                        icon: Icons.nightlight_round,
-                        isSecondary: true,
-                        onPressed: client.selectedAgentId.isEmpty
-                            ? null
-                            : () {
-                                Navigator.of(context).pop();
-                                client.sendCommand('sleep');
-                              },
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Try saying:',
-                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        color: RaikoColors.textMuted,
-                      ),
-                ),
-                const SizedBox(height: 8),
-                for (final phrase in const [
-                  '"Raiko, lock the office PC"',
-                  '"Raiko, restart my workstation"',
-                  '"Raiko, put the desktop to sleep"',
-                ])
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 4),
-                    child: Text(
-                      phrase,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: RaikoColors.textSecondary,
-                            fontStyle: FontStyle.italic,
-                          ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
       },
     );
@@ -286,6 +388,7 @@ class _MobileDashboardScreenState extends State<MobileDashboardScreen> {
       ActivityTab(client: client),
       SettingsTab(
         client: client,
+        settings: widget.settings,
         baseHttpUrlController: baseHttpUrlController,
         websocketUrlController: websocketUrlController,
         authTokenController: authTokenController,
@@ -297,6 +400,9 @@ class _MobileDashboardScreenState extends State<MobileDashboardScreen> {
           unawaited(_applyAndPersistIdentitySettings());
         },
         onConnect: _connect,
+        onVoiceSettingsChanged: () {
+          unawaited(_initializeVoiceEngine());
+        },
       ),
     ];
 
@@ -329,9 +435,12 @@ class _MobileDashboardScreenState extends State<MobileDashboardScreen> {
         child: RaikoVoiceOrb(
           label: 'AI',
           size: 72,
-          isActive: client.isConnected,
+          isActive: client.isConnected && voiceEngine.isInitialized,
+          voiceState: voiceEngine.state,
           tooltip: 'Open voice relay',
-          onPressed: _showVoiceConsole,
+          onPressed: (client.isConnected && voiceEngine.isInitialized)
+              ? _showVoiceConsole
+              : null,
         ),
       ),
       bottomNavigationBar: SafeArea(

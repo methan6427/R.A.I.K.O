@@ -1,3 +1,6 @@
 2026-04-19T14:22:54: {"timestamp":"2026-04-19T11:22:54.330Z","level":"warn","scope":"backend:ws-gateway","message":"Rejected websocket connection due to invalid token"}
 2026-04-19T14:23:07: {"timestamp":"2026-04-19T11:23:07.300Z","level":"warn","scope":"backend:ws-gateway","message":"Rejected websocket connection due to invalid token"}
 2026-04-19T14:23:47: {"timestamp":"2026-04-19T11:23:47.645Z","level":"warn","scope":"backend:ws-gateway","message":"Rejected websocket connection due to invalid token"}
+2026-04-23T18:25:09: {"timestamp":"2026-04-23T15:25:09.950Z","level":"warn","scope":"backend:ws-gateway","message":"Rejected websocket connection due to invalid token"}
+2026-04-23T18:25:10: {"timestamp":"2026-04-23T15:25:10.510Z","level":"warn","scope":"backend:ws-gateway","message":"Rejected websocket connection due to invalid token"}
+2026-04-23T18:25:10: {"timestamp":"2026-04-23T15:25:10.722Z","level":"warn","scope":"backend:ws-gateway","message":"Rejected websocket connection due to invalid token"}
