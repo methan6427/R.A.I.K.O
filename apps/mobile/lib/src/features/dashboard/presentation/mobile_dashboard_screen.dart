@@ -9,8 +9,7 @@ import '../../../core/identity/raiko_identity.dart';
 import '../../../core/network/raiko_ws_client.dart';
 import '../../../core/settings/raiko_settings_store.dart';
 import '../../../core/voice/raiko_voice_engine.dart';
-import '../../../core/voice/voice_models.dart';
-import '../../voice/voice_response_display.dart';
+import '../../voice/voice_relay_modal.dart';
 import 'activity_tab.dart';
 import 'devices_tab.dart';
 import 'home_tab.dart';
@@ -217,213 +216,15 @@ class _MobileDashboardScreenState extends State<MobileDashboardScreen> {
     await client.loadOverview();
   }
 
-  Future<void> _activateVoiceEngine() async {
-    try {
-      await voiceEngine.activate();
-    } catch (e) {
-      if (mounted) {
-        _showSnack(
-          'Voice error: $e',
-          color: RaikoColors.danger,
-          icon: Icons.error_outline_rounded,
-        );
-      }
-    }
-  }
-
-  final TextEditingController _voiceTextController = TextEditingController();
-
   void _showVoiceConsole() {
-    _voiceTextController.clear();
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (BuildContext context, StateSetter setState) {
-            return Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-              child: RaikoCard(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.mic_rounded,
-                          color: RaikoColors.accentStrong,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Voice Relay',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .titleMedium
-                                    ?.copyWith(
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                              ),
-                              if (voiceEngine.lastError != null)
-                                Text(
-                                  'Error: ${voiceEngine.lastError}',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodySmall
-                                      ?.copyWith(
-                                        color: RaikoColors.danger,
-                                      ),
-                                )
-                              else
-                                Text(
-                                  'Voice commands for agent control.',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodySmall
-                                      ?.copyWith(
-                                        color: RaikoColors.textSecondary,
-                                      ),
-                                ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    if (!voiceEngine.isInitialized)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: Text(
-                          'Voice engine not configured. Add API keys in Settings.',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: RaikoColors.warning,
-                              ),
-                        ),
-                      ),
-                    // Manual text input for testing
-                    TextField(
-                      controller: _voiceTextController,
-                      decoration: InputDecoration(
-                        hintText: 'Or type a command here...',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                      ),
-                      maxLines: 1,
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: RaikoButton(
-                            label: voiceEngine.state == RaikoVoiceState.listening
-                                ? 'Listening...'
-                                : (voiceEngine.state == RaikoVoiceState.processing
-                                    ? 'Processing...'
-                                    : 'Start Voice'),
-                            icon: Icons.mic_rounded,
-                            onPressed: (client.selectedAgentId.isEmpty ||
-                                    !voiceEngine.isInitialized ||
-                                    voiceEngine.state != RaikoVoiceState.idle)
-                                ? null
-                                : () {
-                                    unawaited(_activateVoiceEngine());
-                                    setState(() {});
-                                  },
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: RaikoButton(
-                            label: 'Send',
-                            icon: Icons.send_rounded,
-                            isSecondary: true,
-                            onPressed: (_voiceTextController.text.isEmpty ||
-                                    client.selectedAgentId.isEmpty ||
-                                    !voiceEngine.isInitialized ||
-                                    voiceEngine.state != RaikoVoiceState.idle)
-                                ? null
-                                : () async {
-                                    final text = _voiceTextController.text;
-                                    _voiceTextController.clear();
-                                    try {
-                                      setState(() {});
-                                      // Manually process the text as if it came from STT
-                                      await voiceEngine.processTextCommand(text);
-                                    } catch (e) {
-                                      if (mounted) {
-                                        _showSnack(
-                                          'Error: $e',
-                                          color: RaikoColors.danger,
-                                          icon: Icons.error_outline_rounded,
-                                        );
-                                      }
-                                    }
-                                  },
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    RaikoButton(
-                      label: 'Remote Desktop',
-                      icon: Icons.desktop_mac_rounded,
-                      isSecondary: true,
-                      onPressed: voiceEngine.isInitialized
-                          ? () {
-                              Navigator.of(context).pop();
-                              unawaited(voiceEngine.openRemoteDesktop());
-                            }
-                          : null,
-                    ),
-                    const SizedBox(height: 16),
-                    if (voiceEngine.transcribedText == null &&
-                        voiceEngine.parsedIntent == null &&
-                        voiceEngine.responseText == null) ...[
-                      Text(
-                        'Try saying:',
-                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                              color: RaikoColors.textMuted,
-                            ),
-                      ),
-                      const SizedBox(height: 8),
-                      for (final phrase in const [
-                        '"Raiko, lock the office PC"',
-                        '"Raiko, restart my workstation"',
-                        '"Raiko, put the desktop to sleep"',
-                      ])
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 4),
-                          child: Text(
-                            phrase,
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                  color: RaikoColors.textSecondary,
-                                  fontStyle: FontStyle.italic,
-                                ),
-                          ),
-                        ),
-                    ] else ...[
-                      const SizedBox(height: 8),
-                      VoiceResponseDisplay(
-                        state: voiceEngine.state,
-                        transcribedText: voiceEngine.transcribedText,
-                        parsedIntent: voiceEngine.parsedIntent,
-                        responseText: voiceEngine.responseText,
-                        error: voiceEngine.lastError,
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            );
-          },
+        return VoiceRelayModal(
+          voiceEngine: voiceEngine,
+          client: client,
         );
       },
     );

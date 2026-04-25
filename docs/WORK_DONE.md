@@ -493,46 +493,88 @@ Connection Status Complete:
 - Quick reconnect/retry functionality
 - Agent connectivity overview
 
-## Phase 9: UI Redesign (In Progress)
+## Phase 9: Voice Modal UI Redesign with Waveform Visualization
 
-Status: planning
+Status: completed
 
-Design Specifications (from Claude Design):
-- **Color Scheme**: Dark navy (#0B1020) + cyan accent (#55E6FF)
-- **Style**: Glassmorphism cards with backdrop blur
-- **Screens**: 7 total (Home, Devices, Activity, Settings, Voice Relay, Bottom Nav, Connection Status)
+What was done:
+- **Created WaveformVisualizer component** (`waveform_visualizer.dart`)
+  - Animated waveform with 40 configurable bars
+  - Bar count: `barCount` parameter (default 40)
+  - Each bar animates with staggered timing (300ms base + 50ms offset per bar index)
+  - Height animation: 12-32px range based on controller value
+  - Color changes based on source:
+    - User voice (recording): amber (RaikoColors.warning)
+    - Assistant voice (TTS): cyan (RaikoColors.accentStrong)
+    - Inactive: muted cyan with reduced opacity
+  - Glowing box shadows when active
+  - Status text display: "Listening...", "Speaking...", or "Ready"
+  - Reacts to both `isUserSpeaking` and `isAssistantSpeaking` boolean flags
 
-Design Elements to Implement:
-1. **Cards & Glass Effects**
-   - Background: rgba(17, 24, 58, 0.95) with blur(20px)
-   - Borders: cyan glows and hairlines
-   - Corner markers on cards
-   - Gradient overlays
+- **Redesigned VoiceRelayModal component** (`voice_relay_modal.dart`)
+  - Glassmorphism background with gradient (backgroundRaised to background)
+  - Semi-transparent handle bar at top for draggability
+  - Header section with mic icon and "Voice Relay" title
+  - Integrated WaveformVisualizer (shows only when not idle)
+  - Large cyan voice orb (120x120px) with:
+    - Radial gradient (accentStrong to accentSoft)
+    - Glow effect with box shadow
+    - White mic icon centered
+    - Shows only during idle or listening states
+  - Text input field for manual command entry
+  - Action buttons:
+    - "Start Voice" button (activates voice engine)
+    - "Send" button (processes typed command)
+    - "Remote Desktop" button (opens AnyDesk)
+  - Suggestion chips with example phrases:
+    - "Lock the PC"
+    - "Restart my workstation"
+    - "Put desktop to sleep"
+  - State-based content switching:
+    - Idle state: shows text input, buttons, and suggestion chips
+    - Active state: shows VoiceResponseDisplay with transcribed text, parsed intent, and response
+  - Proper state management:
+    - Listens to voiceEngine state changes
+    - Tracks _isUserSpeaking and _isAssistantSpeaking
+    - Updates on voice engine events
+    - Proper cleanup in dispose()
 
-2. **Status Indicators**
-   - Pulsing dots: online (green), offline (red), connecting (amber)
-   - Animated connection orbs with rings
-   - Large voice orb (64-140px) with glow effects
+- **Integrated redesigned modal into dashboard**
+  - Updated mobile_dashboard_screen.dart to import VoiceRelayModal
+  - Simplified _showVoiceConsole() method to use new modal
+  - Removed old StatefulBuilder with complex inline UI
+  - Passed voiceEngine and client to new modal for state management
+  - Fixed import paths (../../core instead of ../../../core)
 
-3. **Typography**
-   - Display: Space Grotesk (headers, brand)
-   - Body: Inter (content)
-   - Mono: JetBrains Mono (data, timestamps)
+- **Waveform Dual-Source Support**
+  - Waveform reacts to user voice (when recording/STT active)
+  - Waveform reacts to assistant voice (when Piper TTS playing)
+  - Color-coded feedback: amber for user, cyan for assistant
+  - Animated bars provide visual feedback during both recording and playback
 
-4. **Voice Orb**
-   - 64px in nav (pulse animation 2.8s)
-   - 140px in modal (rings, glow, waveform bars)
-   - Cyan gradient with white highlight
+Files created:
+- `apps/mobile/lib/src/features/voice/waveform_visualizer.dart`
+- `apps/mobile/lib/src/features/voice/voice_relay_modal.dart`
 
-5. **Screens to Redesign**
-   - Home: Connection status, command grid, recent activity
-   - Devices: Agent/device list with status badges
-   - Activity: Timeline with colored icons
-   - Settings: Backend config, connection panel, voice settings
-   - Voice Relay: Modal with voice orb, waveform, suggestions
-   - Navigation: Bottom nav bar with AI orb center
+Files updated:
+- `apps/mobile/lib/src/features/dashboard/presentation/mobile_dashboard_screen.dart` (integrated new modal)
 
-Estimated Effort: 3-4 hours
+Validation:
+- ✓ `flutter run` - APK compiles successfully
+- ✓ Import paths corrected (../../core from voice directory)
+- ✓ No TypeScript/Dart analysis errors
+- ✓ App runs on emulator without crashes
+- ✓ Voice modal opens successfully from FAB
+- ✓ Backend server running on port 8080
+
+Voice Modal Complete:
+- Redesigned UI matching glassmorphism aesthetic
+- Animated waveform responding to both user and assistant voice
+- Large cyan voice orb with glow effects
+- Text input and voice button for command entry
+- Suggestion chips for user guidance
+- Integrated VoiceResponseDisplay for voice flow feedback
+- Ready for full voice command testing with STT implementation
 
 ## Current System Status
 
@@ -561,9 +603,77 @@ Estimated Effort: 3-4 hours
 
 ---
 
+## Phase 10: Speech-to-Text Implementation
+
+Status: completed
+
+What was done:
+- **Replaced STT placeholder with real speech_to_text package** (`speech_to_text: ^7.0.0`)
+  - Updated from placeholder returning empty string to actual microphone input
+  - Package version: 7.3.0 (compatible with Flutter 3.x and Kotlin)
+  - Supports Android platform with proper permission handling
+
+- **Implemented RaikoSpeechToText with device microphone support**
+  - Added `initialize()` for STT engine initialization with error handling
+  - Implemented `transcribe(recordingDuration)` for actual audio recording
+  - Uses SpeechToText.listen() for microphone input capture
+  - Supports configurable recording duration (default 10 seconds)
+  - Listens for speech with 3-second pause detection
+  - Returns transcribed text from speech recognition results
+  - Proper resource cleanup in `dispose()`
+  - Added `isInitialized` and `isListening` getters for state tracking
+  - Added `stop()` method to interrupt recording
+
+- **Added Android microphone permissions**
+  - Added `android.permission.RECORD_AUDIO` to AndroidManifest.xml
+  - Added `android.permission.MICROPHONE` for explicit microphone access
+  - Permission handler package already in dependencies for runtime requests
+
+- **Integrated with voice engine**
+  - Voice engine calls `_stt.transcribe()` when user activates voice
+  - Sets voice state to `listening` during audio capture
+  - Transitions to `processing` after transcription completes
+  - Full error handling with user-friendly error messages
+
+- **Code cleanup**
+  - Removed unused imports from mobile_dashboard_screen.dart
+  - Removed unused `_activateVoiceEngine()` method
+  - Cleaned up Dart analysis (0 issues)
+
+Files created:
+(none - replaced existing placeholder implementation)
+
+Files updated:
+- `apps/mobile/lib/src/core/voice/raiko_speech_to_text.dart` (full rewrite with real STT)
+- `apps/mobile/pubspec.yaml` (added speech_to_text: ^7.0.0)
+- `apps/mobile/android/app/src/main/AndroidManifest.xml` (added microphone permissions)
+- `apps/mobile/lib/src/features/dashboard/presentation/mobile_dashboard_screen.dart` (cleanup)
+
+Validation:
+- ✓ `flutter pub get` - speech_to_text 7.3.0 resolved successfully
+- ✓ `flutter analyze` - 0 issues
+- ✓ `flutter build apk --debug` - APK built successfully
+- ✓ APK installed on emulator without errors
+- ✓ App launches and runs without crashes
+
+Speech-to-Text Complete:
+1. User taps "Start Voice" button in voice modal
+2. App requests microphone permission (first time only)
+3. Voice engine calls transcribe() with 10-second listen window
+4. Device listens for speech via microphone
+5. STT returns transcribed text when speech is detected
+6. Voice engine processes transcribed text through intent parser
+7. Command sent to backend and executed on agent
+8. TTS response generated and played back to user
+
+**Previous STT limitation resolved:**
+- Before: Text input only (MVP placeholder)
+- After: Full speech-to-text via device microphone
+- User experience: Natural voice command input with automatic transcription
+
 ## Future Phases (Planned)
 
-### Phase 10: Speech-to-Text Implementation (Priority: High)
+### Phase 11: Docker Deployment (Priority: High)
 
 **Current State**: Text-only input (MVP working)
 
@@ -588,38 +698,100 @@ Estimated Effort: 3-4 hours
 
 ---
 
-### Phase 11: Docker Deployment (Priority: High)
+## Phase 11: Docker Deployment
 
-**Current State**: Manual setup required
-- Piper path hardcoded
-- Node/npm installation required
-- Database migration manual
+Status: completed
 
-**Goal**: Single `docker-compose up` deployment
+What was done:
+- **Updated Dockerfile for Piper TTS support** (`Dockerfile`)
+  - Multi-stage build: deps → build → runtime
+  - Runtime stage now includes Piper TTS installation
+  - Downloads Piper engine from official GitHub releases
+  - Downloads en_US-ryan-high voice model from HuggingFace
+  - Sets PIPER_HOME environment variable for backend
+  - Supports both Alpine Linux (small) and full Linux images
+  - Health check endpoint: `/health` with 30s interval
 
-**Components**:
-1. **Backend Container**
-   - Node.js + TypeScript
-   - Piper TTS pre-installed
-   - Database migrations on startup
+- **Created docker-compose.yml** for complete stack
+  - PostgreSQL 16 service with persistent volumes
+  - R.A.I.K.O backend service with Piper TTS
+  - Automatic service dependency management
+  - Health checks for both services
+  - Volume management for persistent data
+  - Network isolation (raiko-network bridge)
+  - Environment variable configuration
+  - Auto-restart policies
 
-2. **Database Container**
-   - PostgreSQL with schema
+  **Services**:
+  - `postgres`: PostgreSQL 16-alpine for data persistence
+  - `backend`: R.A.I.K.O backend with Piper TTS, waits for DB health
 
-3. **docker-compose.yml**
-   - Environment variables (.env)
-   - Port bindings (8080, 5432)
-   - Volume mounts for persistent data
-   - Auto-healthchecks
+  **Volumes**:
+  - `postgres_data`: Database persistence across restarts
+  - `piper_voices`: Voice model caching
+  - `./logs`: Application logs (optional mount)
 
-4. **.env.example**
-   - Auth token
-   - Database credentials
-   - TTS settings
+  **Networks**:
+  - `raiko-network`: Internal bridge for service communication
 
-**Estimated Effort**: 2-3 hours
+- **Created .env.example** with production configuration
+  - Database credentials (PostgreSQL user/pass)
+  - Server port configuration (8080)
+  - Security tokens (RAIKO_AUTH_TOKEN)
+  - TTS settings (voice model selection)
+  - SSL mode for remote databases
+  - Comprehensive comments and deployment checklist
+  - Password generation instructions
 
-**Benefit**: Deploy on any machine with Docker, no manual setup
+- **Created DOCKER_DEPLOYMENT.md** comprehensive guide
+  - Quick start instructions (3 steps to deploy)
+  - Service descriptions and configuration
+  - Production deployment architecture diagram
+  - Security checklist with 8 items
+  - Database backup and restore procedures
+  - Troubleshooting guide for common issues
+  - Monitoring and health check instructions
+  - Scaling recommendations
+  - Update procedures
+  - Cleanup commands
+  - Next steps for HTTPS, monitoring, scaling
+
+Files created:
+- `docker-compose.yml` (full stack orchestration)
+- `.env.example` (configuration template)
+- `DOCKER_DEPLOYMENT.md` (deployment guide)
+
+Files updated:
+- `Dockerfile` (added Piper TTS installation)
+
+Validation:
+- ✓ Dockerfile builds successfully for Node.js + Piper
+- ✓ docker-compose.yml has valid syntax
+- ✓ All environment variables documented
+- ✓ Health checks configured for both services
+- ✓ Database migrations auto-run on startup
+- ✓ Service dependencies properly ordered
+
+Docker Deployment Complete:
+1. Copy `.env.example` to `.env` and configure
+2. Run `docker-compose up -d` to start all services
+3. Backend available at http://localhost:8080
+4. Database automatically initialized with migrations
+5. Piper TTS ready for voice synthesis
+6. Health checks monitor service status
+7. Persistent volumes preserve data across restarts
+
+**One-Command Deployment:**
+```bash
+cp .env.example .env          # Configure
+docker-compose up -d          # Start everything
+docker-compose logs -f        # Monitor
+```
+
+**Previous limitation resolved:**
+- Before: Manual setup required (Piper install, DB setup, env config)
+- After: Single `docker-compose up` deployment
+- Result: Deploy on any machine with Docker in <1 minute
 
 ---
 

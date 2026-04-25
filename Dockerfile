@@ -27,9 +27,10 @@ FROM base AS runtime
 ENV NODE_ENV=production \
     RAIKO_HOST=0.0.0.0 \
     RAIKO_PORT=8080 \
-    RAIKO_RUN_MIGRATIONS=true
+    RAIKO_RUN_MIGRATIONS=true \
+    PIPER_HOME=/app/piper
 
-# Required at deploy-time (set in Coolify env tab):
+# Required at deploy-time (set in Coolify env tab or docker-compose):
 #   RAIKO_DATABASE_URL=postgres://user:pass@host:5432/raiko
 #   RAIKO_AUTH_TOKEN=<strong random string>
 # Optional:
@@ -45,7 +46,20 @@ COPY --from=build /app/apps/agent-windows/package.json ./apps/agent-windows/
 
 # Production-only install. Workspace symlinks resolve shared_types/dist.
 # curl is added for the Coolify/Docker healthcheck.
-RUN npm ci --omit=dev && apk add --no-cache curl
+# wget is added for Piper download
+RUN npm ci --omit=dev && apk add --no-cache curl wget unzip python3
+
+# Install Piper TTS with en_US-ryan-high voice model
+# Downloads and sets up Piper in /app/piper directory
+RUN mkdir -p /app/piper/voices && \
+    cd /app/piper && \
+    wget -q https://github.com/rhasspy/piper/releases/download/2024.1.1/piper_linux_x86_64.tar.gz && \
+    tar xzf piper_linux_x86_64.tar.gz && \
+    rm piper_linux_x86_64.tar.gz && \
+    cd voices && \
+    wget -q https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_US/ryan/high/en_US-ryan-high.onnx && \
+    wget -q https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_US/ryan/high/en_US-ryan-high.onnx.json && \
+    chmod +x /app/piper/piper
 
 EXPOSE 8080
 
