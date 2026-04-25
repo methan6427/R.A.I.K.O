@@ -3,3 +3,19 @@
 app-screenshots.html linguist-documentation
 apps/mobile/build/** linguist-generated
 node_modules/** linguist-vendored
+
+# Exclude other generated/build files from stats
+build/ linguist-vendored
+dist/ linguist-vendored
+*.cmake linguist-vendored
+*_plugin_registrant.* linguist-vendored
+.dart_tool/ linguist-vendored
+.gradle/ linguist-vendored
+*.lock linguist-vendored
+
+# Mark actual source languages
+*.dart linguist-language=Dart
+*.ts linguist-language=TypeScript
+*.tsx linguist-language=TypeScript
+*.js linguist-language=JavaScript
+*.jsx linguist-language=JavaScript
