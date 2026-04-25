@@ -83,12 +83,13 @@ export class AgentClient {
   }
 
   private register(): void {
+    const macAddress = getMacAddress();
     const payload: AgentRegisterPayload = {
       agentId: this.config.agentId,
       name: this.config.agentName,
       platform: this.config.platform,
       supportedCommands: this.config.supportedCommands,
-      macAddress: getMacAddress() ?? undefined,
+      ...(macAddress ? { macAddress } : {}),
     };
 
     this.send(ClientEventType.AgentRegister, payload);

@@ -75,7 +75,7 @@ export class DevicesModule {
         ],
       connectedAt: now,
       lastSeenAt: now,
-      macAddress: payload.macAddress,
+      ...(payload.macAddress ? { macAddress: payload.macAddress } : {}),
     });
 
     this.logger.info("Agent registered", {
