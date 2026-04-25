@@ -25,6 +25,7 @@ export enum AgentCommand {
   Sleep = "sleep",
   Lock = "lock",
   OpenApp = "open_app",
+  OpenRemoteDesktop = "open_remote_desktop",
 }
 
 export interface RaikoEnvelope<TPayload> {

@@ -1,15 +1,18 @@
-import 'package:google_generative_ai/google_generative_ai.dart';
+import 'dart:convert';
+import 'dart:io';
+
 import 'voice_models.dart';
 
 class RaikoIntentParser {
-  late GenerativeModel _model;
+  late String _backendUrl;
+  late String _authToken;
+  late HttpClient _httpClient;
 
-  Future<void> initialize(String apiKey) async {
+  Future<void> initialize(String backendUrl, String authToken) async {
     try {
-      _model = GenerativeModel(
-        model: 'gemini-2.0-flash',
-        apiKey: apiKey,
-      );
+      _backendUrl = backendUrl;
+      _authToken = authToken;
+      _httpClient = HttpClient();
     } catch (e) {
       throw Exception('Failed to initialize intent parser: $e');
     }
@@ -21,69 +24,40 @@ class RaikoIntentParser {
     String userName,
   ) async {
     try {
-      final systemPrompt = '''You are R.A.I.K.O, an AI operations assistant.
+      final uri = Uri.parse('$_backendUrl/api/intent-parse');
+      final request = await _httpClient.postUrl(uri);
+      request.headers.set('Content-Type', 'application/json');
+      request.headers.set('x-raiko-token', _authToken);
 
-Connected agents: ${availableAgents.join(', ')}
-User name: $userName
+      final body = jsonEncode({
+        'text': transcribedText,
+        'agents': availableAgents,
+        'userName': userName,
+      });
 
-Your role: Parse device control commands.
-Available commands: lock, sleep, restart, shutdown, open_app, set_name, ask_clarification
+      request.contentLength = body.length;
+      request.write(body);
 
-When the user says a command, respond ONLY with these lines (no extra text):
-COMMAND: <command>
-TARGET: <agent_name or "all">
-CONFIDENCE: <0.0-1.0>
+      final response = await request.close().timeout(const Duration(seconds: 30));
 
-Examples:
-"lock the laptop" → COMMAND: lock / TARGET: laptop / CONFIDENCE: 0.95
-"restart all devices" → COMMAND: restart / TARGET: all / CONFIDENCE: 0.9
-"raiko my name is adam" → COMMAND: set_name / TARGET: adam / CONFIDENCE: 0.95
-"what time is it" → COMMAND: ask_clarification / CONFIDENCE: 0.3''';
+      if (response.statusCode == 200) {
+        final responseBody = await response.transform(utf8.decoder).join();
+        final json = jsonDecode(responseBody) as Map<String, dynamic>;
 
-      final prompt = '''$systemPrompt
-
-User said: $transcribedText''';
-
-      final response = await _model.generateContent([
-        Content('user', [TextPart(prompt)]),
-      ]);
-
-      return _parseResponse(response.text ?? '');
+        return RaikoIntent(
+          command: json['command'] ?? 'ask_clarification',
+          targetAgent: json['targetAgent'] ?? 'all',
+          confidence: (json['confidence'] ?? 0.0).toDouble(),
+        );
+      } else {
+        throw Exception('Intent parsing failed: HTTP ${response.statusCode}');
+      }
     } catch (e) {
       throw Exception('Intent parsing failed: $e');
     }
   }
 
-  RaikoIntent _parseResponse(String response) {
-    final lines = response.split('\n');
-    String command = 'ask_clarification';
-    String target = '';
-    double confidence = 0.0;
-
-    for (final line in lines) {
-      if (line.startsWith('COMMAND:')) {
-        command = line.replaceFirst('COMMAND:', '').trim().split('/')[0].trim();
-      } else if (line.startsWith('TARGET:')) {
-        target = line.replaceFirst('TARGET:', '').trim().split('/')[0].trim();
-      } else if (line.startsWith('CONFIDENCE:')) {
-        try {
-          confidence = double.parse(
-            line.replaceFirst('CONFIDENCE:', '').trim().split('/')[0].trim(),
-          );
-        } catch (e) {
-          confidence = 0.0;
-        }
-      }
-    }
-
-    return RaikoIntent(
-      command: command,
-      targetAgent: target,
-      confidence: confidence,
-    );
-  }
-
   Future<void> dispose() async {
-    // Cleanup if needed
+    _httpClient.close();
   }
 }

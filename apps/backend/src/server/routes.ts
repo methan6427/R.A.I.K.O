@@ -133,6 +133,43 @@ export async function registerRoutes(app: FastifyInstance, modules: ModuleContai
       voices,
     };
   });
+
+  app.post<{ Body: { text: string; agents: string[]; userName: string | undefined } }>(
+    "/api/intent-parse",
+    async (request, reply) => {
+      if (!ensureAuthorized(modules, request, reply)) {
+        return;
+      }
+
+      const { text, agents, userName } = request.body;
+
+      if (!text || typeof text !== "string" || text.trim().length === 0) {
+        return reply.code(400).send({
+          error: "Invalid text parameter",
+        });
+      }
+
+      if (!agents || !Array.isArray(agents) || agents.length === 0) {
+        return reply.code(400).send({
+          error: "Invalid agents parameter",
+        });
+      }
+
+      try {
+        const result = modules.intent.parse({
+          text,
+          agents,
+          userName: userName || undefined,
+        });
+
+        return result;
+      } catch (error) {
+        return reply.code(500).send({
+          error: error instanceof Error ? error.message : "Intent parsing failed",
+        });
+      }
+    },
+  );
 }
 
 function ensureAuthorized(

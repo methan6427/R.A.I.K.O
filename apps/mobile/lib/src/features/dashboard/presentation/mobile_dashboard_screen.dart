@@ -10,6 +10,7 @@ import '../../../core/network/raiko_ws_client.dart';
 import '../../../core/settings/raiko_settings_store.dart';
 import '../../../core/voice/raiko_voice_engine.dart';
 import '../../../core/voice/voice_models.dart';
+import '../../voice/voice_response_display.dart';
 import 'activity_tab.dart';
 import 'devices_tab.dart';
 import 'home_tab.dart';
@@ -71,20 +72,11 @@ class _MobileDashboardScreenState extends State<MobileDashboardScreen> {
   }
 
   Future<void> _initializeVoiceEngine() async {
-    final porcupineKey = widget.settings.porcupineAccessKey ?? '';
-    final geminiKey = widget.settings.geminiApiKey ?? '';
-
-    if (porcupineKey.isEmpty || geminiKey.isEmpty) {
-      if (mounted) {
-        voiceEngine.addListener(_onVoiceEngineChanged);
-      }
-      return;
-    }
+    final porcupineKey = widget.settings.porcupineAccessKey;
 
     try {
       await voiceEngine.initialize(
         porcupineAccessKey: porcupineKey,
-        geminiApiKey: geminiKey,
       );
       if (mounted) {
         voiceEngine.addListener(_onVoiceEngineChanged);
@@ -239,7 +231,10 @@ class _MobileDashboardScreenState extends State<MobileDashboardScreen> {
     }
   }
 
+  final TextEditingController _voiceTextController = TextEditingController();
+
   void _showVoiceConsole() {
+    _voiceTextController.clear();
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
@@ -311,6 +306,19 @@ class _MobileDashboardScreenState extends State<MobileDashboardScreen> {
                               ),
                         ),
                       ),
+                    // Manual text input for testing
+                    TextField(
+                      controller: _voiceTextController,
+                      decoration: InputDecoration(
+                        hintText: 'Or type a command here...',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      ),
+                      maxLines: 1,
+                    ),
+                    const SizedBox(height: 12),
                     Row(
                       children: [
                         Expanded(
@@ -334,42 +342,83 @@ class _MobileDashboardScreenState extends State<MobileDashboardScreen> {
                         const SizedBox(width: 12),
                         Expanded(
                           child: RaikoButton(
-                            label: 'Lock',
-                            icon: Icons.lock_outline_rounded,
+                            label: 'Send',
+                            icon: Icons.send_rounded,
                             isSecondary: true,
-                            onPressed: client.selectedAgentId.isEmpty
+                            onPressed: (_voiceTextController.text.isEmpty ||
+                                    client.selectedAgentId.isEmpty ||
+                                    !voiceEngine.isInitialized ||
+                                    voiceEngine.state != RaikoVoiceState.idle)
                                 ? null
-                                : () {
-                                    Navigator.of(context).pop();
-                                    client.sendCommand('lock');
+                                : () async {
+                                    final text = _voiceTextController.text;
+                                    _voiceTextController.clear();
+                                    try {
+                                      setState(() {});
+                                      // Manually process the text as if it came from STT
+                                      await voiceEngine.processTextCommand(text);
+                                    } catch (e) {
+                                      if (mounted) {
+                                        _showSnack(
+                                          'Error: $e',
+                                          color: RaikoColors.danger,
+                                          icon: Icons.error_outline_rounded,
+                                        );
+                                      }
+                                    }
                                   },
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Try saying:',
-                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                            color: RaikoColors.textMuted,
-                          ),
+                    const SizedBox(height: 12),
+                    RaikoButton(
+                      label: 'Remote Desktop',
+                      icon: Icons.desktop_mac_rounded,
+                      isSecondary: true,
+                      onPressed: voiceEngine.isInitialized
+                          ? () {
+                              Navigator.of(context).pop();
+                              unawaited(voiceEngine.openRemoteDesktop());
+                            }
+                          : null,
                     ),
-                    const SizedBox(height: 8),
-                    for (final phrase in const [
-                      '"Raiko, lock the office PC"',
-                      '"Raiko, restart my workstation"',
-                      '"Raiko, put the desktop to sleep"',
-                    ])
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 4),
-                        child: Text(
-                          phrase,
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: RaikoColors.textSecondary,
-                                fontStyle: FontStyle.italic,
-                              ),
-                        ),
+                    const SizedBox(height: 16),
+                    if (voiceEngine.transcribedText == null &&
+                        voiceEngine.parsedIntent == null &&
+                        voiceEngine.responseText == null) ...[
+                      Text(
+                        'Try saying:',
+                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                              color: RaikoColors.textMuted,
+                            ),
                       ),
+                      const SizedBox(height: 8),
+                      for (final phrase in const [
+                        '"Raiko, lock the office PC"',
+                        '"Raiko, restart my workstation"',
+                        '"Raiko, put the desktop to sleep"',
+                      ])
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 4),
+                          child: Text(
+                            phrase,
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  color: RaikoColors.textSecondary,
+                                  fontStyle: FontStyle.italic,
+                                ),
+                          ),
+                        ),
+                    ] else ...[
+                      const SizedBox(height: 8),
+                      VoiceResponseDisplay(
+                        state: voiceEngine.state,
+                        transcribedText: voiceEngine.transcribedText,
+                        parsedIntent: voiceEngine.parsedIntent,
+                        responseText: voiceEngine.responseText,
+                        error: voiceEngine.lastError,
+                      ),
+                    ],
                   ],
                 ),
               ),

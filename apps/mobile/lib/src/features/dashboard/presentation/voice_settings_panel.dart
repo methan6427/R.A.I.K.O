@@ -20,7 +20,6 @@ class VoiceSettingsPanel extends StatefulWidget {
 
 class _VoiceSettingsPanelState extends State<VoiceSettingsPanel> {
   late final TextEditingController _porcupineKeyController;
-  late final TextEditingController _geminiKeyController;
   late bool _confirmBeforeExecute;
   late int _listeningTimeout;
 
@@ -29,8 +28,6 @@ class _VoiceSettingsPanelState extends State<VoiceSettingsPanel> {
     super.initState();
     _porcupineKeyController =
         TextEditingController(text: widget.settings.porcupineAccessKey ?? '');
-    _geminiKeyController =
-        TextEditingController(text: widget.settings.geminiApiKey ?? '');
     _confirmBeforeExecute = widget.settings.confirmBeforeExecute ?? true;
     _listeningTimeout = widget.settings.listeningTimeoutSeconds ?? 10;
   }
@@ -38,13 +35,11 @@ class _VoiceSettingsPanelState extends State<VoiceSettingsPanel> {
   @override
   void dispose() {
     _porcupineKeyController.dispose();
-    _geminiKeyController.dispose();
     super.dispose();
   }
 
   Future<void> _saveSettings() async {
     await widget.settings.savePorcupineAccessKey(_porcupineKeyController.text);
-    await widget.settings.saveGeminiApiKey(_geminiKeyController.text);
     await widget.settings.saveConfirmBeforeExecute(_confirmBeforeExecute);
     await widget.settings.saveListeningTimeout(_listeningTimeout);
     widget.onSettingsChanged();
@@ -86,17 +81,6 @@ class _VoiceSettingsPanelState extends State<VoiceSettingsPanel> {
             decoration: const InputDecoration(
               labelText: 'Porcupine Access Key',
               helperText: 'From picovoice.ai for wake word detection',
-              prefixIcon: Icon(Icons.vpn_key_rounded, size: 18),
-              isDense: true,
-            ),
-            obscureText: true,
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _geminiKeyController,
-            decoration: const InputDecoration(
-              labelText: 'Google Gemini API Key',
-              helperText: 'From Google Cloud for intent parsing',
               prefixIcon: Icon(Icons.vpn_key_rounded, size: 18),
               isDense: true,
             ),

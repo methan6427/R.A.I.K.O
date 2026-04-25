@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(adb devices *)",
+      "Bash(emulator -avd Pixel_9_Pro_XL -no-snapshot-load)",
+      "Bash(curl -s http://localhost:8080/api/tts/voices -H 'x-raiko-token: raiko-dev')",
+      "Bash(adb shell *)",
+      "Bash(adb pull *)",
+      "Bash(pkill -f \"flutter run\")",
+      "Bash(flutter run *)",
+      "Bash(curl -s -X POST http://localhost:8080/api/tts -H 'Content-Type: application/json' -H 'x-raiko-token: raiko-dev' -d '{\"text\":\"Voice system is ready for testing.\"}' --output /tmp/test-voice.wav -w 'Status: %{http_code}\\\\n')",
+      "Bash(adb logcat *)",
+      "Bash(killall node *)",
+      "Bash(curl -s http://localhost:8080/api/overview -H \"x-raiko-token: raiko-dev\")",
+      "Bash(tee /tmp/flutter-rebuild.log)",
+      "Bash(tee /tmp/flutter-final.log)",
+      "Bash(curl -s -X POST http://localhost:8080/api/tts -H 'Content-Type: application/json' -H 'x-raiko-token: raiko-dev' -d '{\"text\":\"Your voice control system is fully operational. The Piper text to speech engine generates professional quality audio with natural sounding voices.\"}' --output /tmp/validation-audio.wav -w '\\\\nStatus: %{http_code}\\\\n')"
+    ]
+  }
+}
