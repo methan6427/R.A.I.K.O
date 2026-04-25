@@ -493,6 +493,47 @@ Connection Status Complete:
 - Quick reconnect/retry functionality
 - Agent connectivity overview
 
+## Phase 9: UI Redesign (In Progress)
+
+Status: planning
+
+Design Specifications (from Claude Design):
+- **Color Scheme**: Dark navy (#0B1020) + cyan accent (#55E6FF)
+- **Style**: Glassmorphism cards with backdrop blur
+- **Screens**: 7 total (Home, Devices, Activity, Settings, Voice Relay, Bottom Nav, Connection Status)
+
+Design Elements to Implement:
+1. **Cards & Glass Effects**
+   - Background: rgba(17, 24, 58, 0.95) with blur(20px)
+   - Borders: cyan glows and hairlines
+   - Corner markers on cards
+   - Gradient overlays
+
+2. **Status Indicators**
+   - Pulsing dots: online (green), offline (red), connecting (amber)
+   - Animated connection orbs with rings
+   - Large voice orb (64-140px) with glow effects
+
+3. **Typography**
+   - Display: Space Grotesk (headers, brand)
+   - Body: Inter (content)
+   - Mono: JetBrains Mono (data, timestamps)
+
+4. **Voice Orb**
+   - 64px in nav (pulse animation 2.8s)
+   - 140px in modal (rings, glow, waveform bars)
+   - Cyan gradient with white highlight
+
+5. **Screens to Redesign**
+   - Home: Connection status, command grid, recent activity
+   - Devices: Agent/device list with status badges
+   - Activity: Timeline with colored icons
+   - Settings: Backend config, connection panel, voice settings
+   - Voice Relay: Modal with voice orb, waveform, suggestions
+   - Navigation: Bottom nav bar with AI orb center
+
+Estimated Effort: 3-4 hours
+
 ## Current System Status
 
 **Architecture Complete:**
@@ -517,6 +558,111 @@ Connection Status Complete:
 - STT: Currently placeholder returning empty string (text input works as MVP)
 - UI Design: Current design is functional, not matching Claude Design mockups yet
 - Piper Path: Hardcoded to C:\Users\methan\AppData\Local\Piper (works for this machine)
+
+---
+
+## Future Phases (Planned)
+
+### Phase 10: Speech-to-Text Implementation (Priority: High)
+
+**Current State**: Text-only input (MVP working)
+
+**Goal**: Replace text input with actual speech recognition
+
+**Options**:
+1. **speech_to_text package** (Easy)
+   - Flutter plugin for STT
+   - Address any Kotlin compilation errors
+   - Estimated: 1-2 hours
+
+2. **Whisper.cpp** (Medium)
+   - Local speech recognition (no API keys)
+   - Runs on device
+   - Higher accuracy than free APIs
+   - Estimated: 2-3 hours
+
+3. **Keep text-only** (Done)
+   - Current MVP sufficient for testing
+
+**Recommendation**: Implement speech_to_text package first, fallback to text-only if issues arise.
+
+---
+
+### Phase 11: Docker Deployment (Priority: High)
+
+**Current State**: Manual setup required
+- Piper path hardcoded
+- Node/npm installation required
+- Database migration manual
+
+**Goal**: Single `docker-compose up` deployment
+
+**Components**:
+1. **Backend Container**
+   - Node.js + TypeScript
+   - Piper TTS pre-installed
+   - Database migrations on startup
+
+2. **Database Container**
+   - PostgreSQL with schema
+
+3. **docker-compose.yml**
+   - Environment variables (.env)
+   - Port bindings (8080, 5432)
+   - Volume mounts for persistent data
+   - Auto-healthchecks
+
+4. **.env.example**
+   - Auth token
+   - Database credentials
+   - TTS settings
+
+**Estimated Effort**: 2-3 hours
+
+**Benefit**: Deploy on any machine with Docker, no manual setup
+
+---
+
+### Phase 12: Wake-on-LAN Feature (Priority: Medium)
+
+**Goal**: Power on sleeping/off PCs remotely
+
+**Implementation**:
+1. **Add `wol` command**
+   - Windows agent sends magic packet
+   - Target: MAC address + broadcast IP
+   - Requires network discovery setup
+
+2. **Mobile UI**
+   - New "Wake" button in device list
+   - Wakes device before sending commands
+   - Shows device power state
+
+3. **Backend tracking**
+   - Remember which devices are sleeping
+   - Auto-detect state from heartbeat timeout
+
+**Estimated Effort**: 1-2 hours
+
+**Requires**: 
+- Network discovery/ARP scan for MAC addresses
+- Magic packet library
+
+---
+
+### Phase 13: Advanced Features (Future Consideration)
+
+**Potential Enhancements**:
+- Scheduled commands (cron-like)
+- Command macros (sequences)
+- Notification on command completion
+- Dark/light theme toggle
+- Multi-user support with permissions
+- Remote file transfer
+- System metrics dashboard (CPU, RAM, disk)
+- Integration with other platforms (Google Home, Alexa)
+
+---
 
 ## Validation
 
