@@ -46,6 +46,7 @@ export interface AgentRegisterPayload {
   name: string;
   platform: string;
   supportedCommands?: AgentCommand[];
+  macAddress?: string;
 }
 
 export interface CommandSendPayload {

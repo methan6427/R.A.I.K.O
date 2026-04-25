@@ -10,6 +10,7 @@ import {
 import type { AgentConfig } from "../config.js";
 import { AgentLogger } from "../logger.js";
 import { handleCommand } from "../commands/command-handlers.js";
+import { getMacAddress } from "../network/mac-address.js";
 
 export class AgentClient {
   private socket: WebSocket | undefined;
@@ -87,6 +88,7 @@ export class AgentClient {
       name: this.config.agentName,
       platform: this.config.platform,
       supportedCommands: this.config.supportedCommands,
+      macAddress: getMacAddress() ?? undefined,
     };
 
     this.send(ClientEventType.AgentRegister, payload);

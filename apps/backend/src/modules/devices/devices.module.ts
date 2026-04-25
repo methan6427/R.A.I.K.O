@@ -75,11 +75,13 @@ export class DevicesModule {
         ],
       connectedAt: now,
       lastSeenAt: now,
+      macAddress: payload.macAddress,
     });
 
     this.logger.info("Agent registered", {
       agentId: payload.agentId,
       platform: payload.platform,
+      macAddress: payload.macAddress,
     });
   }
 

@@ -32,7 +32,7 @@ export class CommandsModule {
       ...(dispatchPayload.args ? { args: dispatchPayload.args } : {}),
     });
 
-    const result = this.dispatcher.dispatch(dispatchPayload);
+    const result = await this.dispatcher.dispatch(dispatchPayload);
     if (!result.ok) {
       const failedResult: CommandResultRecord = {
         commandId: dispatchPayload.commandId,

@@ -24,6 +24,7 @@ export interface UpsertAgentConnectionInput {
   supportedCommands: AgentCommand[];
   connectedAt: string;
   lastSeenAt: string;
+  macAddress?: string;
 }
 
 export interface DevicesRepository {
@@ -58,6 +59,7 @@ interface AgentRow extends QueryResultRow {
   connected_at: string | Date;
   last_seen_at: string | Date;
   supported_commands: AgentCommand[] | null;
+  mac_address?: string | null;
 }
 
 export class PostgresDevicesRepository implements DevicesRepository {
@@ -146,29 +148,32 @@ export class PostgresDevicesRepository implements DevicesRepository {
           platform,
           status,
           supported_commands,
+          mac_address,
           connected_at,
           last_seen_at,
           disconnected_at,
           updated_at
         )
-        VALUES ($1, $2, $3, 'online', $4, $5, $6, NULL, NOW())
+        VALUES ($1, $2, $3, 'online', $4, $5, $6, $7, NULL, NOW())
         ON CONFLICT (id)
         DO UPDATE SET
           name = EXCLUDED.name,
           platform = EXCLUDED.platform,
           status = EXCLUDED.status,
           supported_commands = EXCLUDED.supported_commands,
+          mac_address = COALESCE(EXCLUDED.mac_address, agents.mac_address),
           connected_at = EXCLUDED.connected_at,
           last_seen_at = EXCLUDED.last_seen_at,
           disconnected_at = NULL,
           updated_at = NOW()
-        RETURNING id, name, platform, status, connected_at, last_seen_at, supported_commands
+        RETURNING id, name, platform, status, connected_at, last_seen_at, supported_commands, mac_address
       `,
       [
         input.id,
         input.name,
         input.platform,
         JSON.stringify(input.supportedCommands),
+        input.macAddress ?? null,
         input.connectedAt,
         input.lastSeenAt,
       ],
@@ -245,7 +250,7 @@ export class PostgresDevicesRepository implements DevicesRepository {
   async listOnlineAgents(): Promise<AgentSummary[]> {
     const result = await this.database.query<AgentRow>(
       `
-        SELECT id, name, platform, status, connected_at, last_seen_at, supported_commands
+        SELECT id, name, platform, status, connected_at, last_seen_at, supported_commands, mac_address
         FROM agents
         WHERE status = 'online'
         ORDER BY connected_at DESC
@@ -277,6 +282,7 @@ function mapAgentRow(row: AgentRow): AgentSummary {
     connectedAt: toIsoString(row.connected_at),
     lastSeenAt: toIsoString(row.last_seen_at),
     supportedCommands: normalizeSupportedCommands(row.supported_commands),
+    ...(row.mac_address ? { macAddress: row.mac_address } : {}),
   };
 }
 

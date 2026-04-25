@@ -73,15 +73,20 @@ export class ModuleContainer {
       config.bootstrapUser,
     );
     const settings = new SettingsModule(new PostgresSettingsRepository(dependencies.database));
+    const devicesRepository = new PostgresDevicesRepository(dependencies.database);
     const devices = new DevicesModule(
-      new PostgresDevicesRepository(dependencies.database),
+      devicesRepository,
       registry,
       users.defaultUserId,
       dependencies.logger.child("devices"),
     );
     const commands = new CommandsModule(
       new PostgresCommandsRepository(dependencies.database),
-      new CommandDispatcher(registry, dependencies.logger.child("commands")),
+      new CommandDispatcher(
+        registry,
+        dependencies.logger.child("commands"),
+        devicesRepository,
+      ),
       activity,
       config.commandLimit,
     );
