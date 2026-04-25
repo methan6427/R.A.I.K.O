@@ -14,7 +14,9 @@
       "Bash(curl -s http://localhost:8080/api/overview -H \"x-raiko-token: raiko-dev\")",
       "Bash(tee /tmp/flutter-rebuild.log)",
       "Bash(tee /tmp/flutter-final.log)",
-      "Bash(curl -s -X POST http://localhost:8080/api/tts -H 'Content-Type: application/json' -H 'x-raiko-token: raiko-dev' -d '{\"text\":\"Your voice control system is fully operational. The Piper text to speech engine generates professional quality audio with natural sounding voices.\"}' --output /tmp/validation-audio.wav -w '\\\\nStatus: %{http_code}\\\\n')"
+      "Bash(curl -s -X POST http://localhost:8080/api/tts -H 'Content-Type: application/json' -H 'x-raiko-token: raiko-dev' -d '{\"text\":\"Your voice control system is fully operational. The Piper text to speech engine generates professional quality audio with natural sounding voices.\"}' --output /tmp/validation-audio.wav -w '\\\\nStatus: %{http_code}\\\\n')",
+      "Bash(netstat -ano)",
+      "Bash(findstr \":8080\")"
     ]
   }
 }
