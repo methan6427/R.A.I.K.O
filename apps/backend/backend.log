@@ -1,7 +1,48 @@
-[dotenv@17.3.1] injecting env (13) from .env -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
-[dotenv@17.3.1] injecting env (0) from ..\..\.env -- tip: ⚙️  suppress all logs with { quiet: true }
-{"timestamp":"2026-04-25T18:12:47.616Z","level":"info","scope":"backend:database","message":"Database connectivity check passed"}
-{"timestamp":"2026-04-25T18:12:47.633Z","level":"info","scope":"backend:devices","message":"Reconciled persisted connection state on startup","meta":{"devicesMarkedOffline":1,"agentsMarkedOffline":1}}
+
+> @raiko/backend@0.1.0 dev
+> tsx watch src/index.ts
+
+[dotenv@17.3.1] injecting env (13) from .env -- tip: 🤖 agentic secret storage: https://dotenvx.com/as2
+[dotenv@17.3.1] injecting env (0) from ..\..\.env -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
+{"timestamp":"2026-04-25T20:01:45.654Z","level":"info","scope":"backend:database","message":"Database connectivity check passed"}
+{"timestamp":"2026-04-25T20:01:45.666Z","level":"info","scope":"backend:devices","message":"Reconciled persisted connection state on startup","meta":{"devicesMarkedOffline":0,"agentsMarkedOffline":1}}
+{"timestamp":"2026-04-25T20:01:45.690Z","level":"info","scope":"backend","message":"Backend started","meta":{"host":"0.0.0.0","port":8080,"wsPath":"/ws"}}
+{"timestamp":"2026-04-25T20:01:47.597Z","level":"info","scope":"backend:ws-gateway","message":"Socket connected","meta":{"remoteAddress":"127.0.0.1"}}
+{"timestamp":"2026-04-25T20:01:47.599Z","level":"info","scope":"backend:devices","message":"Agent registered","meta":{"agentId":"agent-win-01","platform":"windows"}}
+{"timestamp":"2026-04-25T20:01:47.601Z","level":"info","scope":"backend:activity","message":"Activity recorded","meta":{"type":"agent.register","actorId":"agent-win-01","detail":"RAIKO Windows Agent","createdAt":"2026-04-25T20:023:03:58 [tsx] change in ./..\..\packages\shared_types\dist\index.js Rerunning...
+c[dotenv@17.3.1] injecting env (13) from .env -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
+[dotenv@17.3.1] injecting env (0) from ..\..\.env -- tip: 🛠️  run anywhere with `dotenvx run -- yourcommand`
+{"timestamp":"2026-04-25T20:03:59.778Z","level":"info","scope":"backend:database","message":"Database connectivity check passed"}
+{"timestamp":"2026-04-25T20:03:59.796Z","level":"info","scope":"backend:devices","message":"Reconciled persisted connection state on startup","meta":{"devicesMarkedOffline":0,"agentsMarkedOffline":0}}
+node:events:496
+      throw er; // Unhandled 'error' event
+      ^
+
+Error: listen EADDRINUSE: address already in use 0.0.0.0:8080
+    at Server.setupListenHandle [as _listen2] (node:net:1937:16)
+    at listenInCluster (node:net:1994:12)
+    at node:net:2203:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)
+Emitted 'error' event on WebSocketServer instance at:
+    at Server.emit (node:events:530:35)
+    at emitErrorNT (node:net:1973:8)
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 8080
+}
+
+Node.js v22.14.0
+2026-04-25T20:03:17.689Z"}}
+{"timestamp":"2026-04-25T20:03:32.706Z","level":"info","scope":"backend:activity","message":"Activity recorded","meta":{"type":"heartbeat","actorId":"agent-win-01","detail":"online","createdAt":"2026-04-25T20:03:32.705Z"}}
+{"timestamp":"2026-04-25T20:03:47.707Z","level":"info","scope":"backend:activity","message":"Activity recorded","meta":{"type":"heartbeat","actorId":"agent-win-01","detail":"online","createdAt":"2026-04-25T20:03:47.706Z"}}
+23:03:58 [tsx] change in ./..\..\packages\shared_types\dist\index.js Restarting...
+c[dotenv@17.3.1] injecting env (13) from .env -- tip: ⚙️  write to custom object with { processEnv: myObject }
+[dotenv@17.3.1] injecting env (0) from ..\..\.env -- tip: 🤖 agentic secret storage: https://dotenvx.com/as2
+{"timestamp":"2026-04-25T20:03:59.786Z","level":"info","scope":"backend:database","message":"Database connectivity check passed"}
+{"timestamp":"2026-04-25T20:03:59.803Z","level":"info","scope":"backend:devices","message":"Reconciled persisted connection state on startup","meta":{"devicesMarkedOffline":0,"agentsMarkedOffline":0}}
 node:events:496
       throw er; // Unhandled 'error' event
       ^

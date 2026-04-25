@@ -19,7 +19,17 @@
       "Bash(findstr \":8080\")",
       "Bash(grep -v \"^$\")",
       "Bash(tasklist)",
-      "Bash(flutter install *)"
+      "Bash(flutter install *)",
+      "Bash(curl -X POST http://localhost:8080/api/intent-parse -H \"Content-Type: application/json\" -d '{\"text\":\"wake up the office pc\",\"agents\":[\"office-pc\",\"laptop\"],\"userName\":\"Adam\"}')",
+      "Bash(curl -X POST http://localhost:8080/api/intent-parse -H \"Content-Type: application/json\" -H \"x-raiko-token: change-me-in-production\" -d '{\"text\":\"wake up the office pc\",\"agents\":[\"office-pc\",\"laptop\"],\"userName\":\"Adam\"}')",
+      "Bash(netstat -tulnp)",
+      "Bash(taskkill /PID 35072 /F)",
+      "PowerShell(Stop-Process -Id 35072 -Force -ErrorAction SilentlyContinue)",
+      "Bash(curl -s -X POST http://localhost:8080/api/intent-parse -H \"Content-Type: application/json\" -H \"x-raiko-token: change-me-in-production\" -d '{\"text\":\"wake up the office pc\",\"agents\":[\"office-pc\",\"laptop\"],\"userName\":\"Adam\"}')",
+      "Bash(curl -s -X POST http://localhost:8080/api/intent-parse -H \"Content-Type: application/json\" -H \"x-raiko-token: raiko-dev\" -d '{\"text\":\"wake up the office pc\",\"agents\":[\"office-pc\",\"laptop\"],\"userName\":\"Adam\"}')",
+      "Bash(curl -s -X POST http://localhost:8080/api/intent-parse -H \"Content-Type: application/json\" -H \"x-raiko-token: raiko-dev\" -d '{\"text\":\"power on the office-pc\",\"agents\":[\"office-pc\",\"laptop\"],\"userName\":\"Adam\"}')",
+      "Bash(curl -s -X POST http://localhost:8080/api/intent-parse -H \"Content-Type: application/json\" -H \"x-raiko-token: raiko-dev\" -d '{\"text\":\"wake on lan laptop\",\"agents\":[\"office-pc\",\"laptop\"],\"userName\":\"Adam\"}')",
+      "Bash(curl -s -X POST http://localhost:8080/api/intent-parse -H \"Content-Type: application/json\" -H \"x-raiko-token: raiko-dev\" -d '{\"text\":\"turn on all devices\",\"agents\":[\"office-pc\",\"laptop\"],\"userName\":\"Adam\"}')"
     ]
   }
 }

@@ -26,6 +26,7 @@ export enum AgentCommand {
   Lock = "lock",
   OpenApp = "open_app",
   OpenRemoteDesktop = "open_remote_desktop",
+  WakeUp = "wake_up",
 }
 
 export interface RaikoEnvelope<TPayload> {
@@ -100,6 +101,7 @@ export interface AgentSummary {
   connectedAt: string;
   lastSeenAt: string;
   supportedCommands: AgentCommand[];
+  macAddress?: string;
 }
 
 export interface DeviceStatePayload {

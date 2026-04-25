@@ -33,6 +33,10 @@ const COMMAND_PATTERNS: Record<
     keywords: ["shutdown", "power off", "turn off"],
     aliases: ["shut down", "power down"],
   },
+  wake_up: {
+    keywords: ["wake", "wake up", "power on", "turn on"],
+    aliases: ["wake on lan", "wol"],
+  },
   open_app: {
     keywords: ["open", "launch", "run", "start"],
   },

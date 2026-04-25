@@ -48,6 +48,7 @@ export function loadConfig(): AgentConfig {
       AgentCommand.Lock,
       AgentCommand.OpenApp,
       AgentCommand.OpenRemoteDesktop,
+      AgentCommand.WakeUp,
     ],
     ...(authToken ? { authToken } : {}),
   };

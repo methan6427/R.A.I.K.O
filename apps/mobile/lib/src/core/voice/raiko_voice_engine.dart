@@ -217,6 +217,8 @@ class RaikoVoiceEngine extends ChangeNotifier {
         return 'Restarting $targets, $userName.';
       case 'shutdown':
         return 'Shutting down $targets, $userName.';
+      case 'wake_up':
+        return 'Waking up $targets, $userName.';
       default:
         return 'Executing $command on $targets, $userName.';
     }
@@ -237,6 +239,8 @@ class RaikoVoiceEngine extends ChangeNotifier {
         return '$targets is restarting.';
       case 'shutdown':
         return '$targets is shutting down.';
+      case 'wake_up':
+        return 'Waking up $targets. It may take a moment to respond.';
       case 'open_remote_desktop':
         return 'Opening AnyDesk remote desktop.';
       default:
