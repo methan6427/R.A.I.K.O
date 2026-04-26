@@ -7,7 +7,6 @@ export async function registerRoutes(app: FastifyInstance, modules: ModuleContai
   app.get("/health", async () => ({
     status: "ok",
     uptime: process.uptime(),
-    authEnabled: modules.auth.isEnabled,
   }));
 
   app.get("/api/overview", async (request, reply) => {

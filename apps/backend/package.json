@@ -13,6 +13,7 @@
     "migrate": "tsx src/database/run-migrations.ts"
   },
   "dependencies": {
+    "@fastify/rate-limit": "^10.3.0",
     "@raiko/shared-types": "file:../../packages/shared_types",
     "dotenv": "^17.3.1",
     "fastify": "^5.6.1",

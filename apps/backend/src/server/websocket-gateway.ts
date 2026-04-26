@@ -26,15 +26,24 @@ export function attachWebSocketGateway(
   modules: ModuleContainer,
   logger: Logger,
 ): void {
-  const wss = new WebSocketServer({ server, path: "/ws" });
+  const wss = new WebSocketServer({
+    server,
+    path: "/ws",
+    // Reject unauthorized handshakes before the upgrade completes so failed auth
+    // attempts don't consume CPU/RAM for a TCP+TLS+WS round-trip just to be closed.
+    verifyClient: (info, done) => {
+      if (isAuthorizedConnection(modules, info.req)) {
+        done(true);
+        return;
+      }
+      logger.warn("Rejected websocket upgrade due to invalid token", {
+        remoteAddress: info.req.socket.remoteAddress,
+      });
+      done(false, 401, "Unauthorized");
+    },
+  });
 
   wss.on("connection", (socket, request) => {
-    if (!isAuthorizedConnection(modules, request)) {
-      logger.warn("Rejected websocket connection due to invalid token");
-      socket.close(4001, "unauthorized");
-      return;
-    }
-
     logger.info("Socket connected", {
       remoteAddress: request.socket.remoteAddress,
     });
