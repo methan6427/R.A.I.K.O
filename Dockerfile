@@ -49,17 +49,23 @@ COPY --from=build /app/apps/agent-windows/package.json ./apps/agent-windows/
 # wget is added for Piper download
 RUN npm ci --omit=dev && apk add --no-cache curl wget unzip python3
 
-# Install Piper TTS with en_US-ryan-high voice model
-# Downloads and sets up Piper in /app/piper directory
-RUN mkdir -p /app/piper/voices && \
-    cd /app/piper && \
-    wget -q https://github.com/rhasspy/piper/releases/download/2024.1.1/piper_linux_x86_64.tar.gz && \
-    tar xzf piper_linux_x86_64.tar.gz && \
-    rm piper_linux_x86_64.tar.gz && \
-    cd voices && \
-    wget -q https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_US/ryan/high/en_US-ryan-high.onnx && \
-    wget -q https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_US/ryan/high/en_US-ryan-high.onnx.json && \
-    chmod +x /app/piper/piper
+# Install Piper TTS with en_US-ryan-high voice model.
+# Pinned to a real, immutable release tag — tag 2024.1.1 was never published and breaks builds.
+ARG PIPER_RELEASE=2023.11.14-2
+ARG PIPER_VOICE_BASE=https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_US/ryan/high
+RUN set -eux; \
+    mkdir -p /app/piper/voices; \
+    cd /app/piper; \
+    wget --no-verbose -O piper.tar.gz "https://github.com/rhasspy/piper/releases/download/${PIPER_RELEASE}/piper_linux_x86_64.tar.gz"; \
+    test -s piper.tar.gz; \
+    tar xzf piper.tar.gz --strip-components=0; \
+    rm piper.tar.gz; \
+    chmod +x /app/piper/piper; \
+    cd voices; \
+    wget --no-verbose -O en_US-ryan-high.onnx       "${PIPER_VOICE_BASE}/en_US-ryan-high.onnx"; \
+    wget --no-verbose -O en_US-ryan-high.onnx.json  "${PIPER_VOICE_BASE}/en_US-ryan-high.onnx.json"; \
+    test -s en_US-ryan-high.onnx; \
+    test -s en_US-ryan-high.onnx.json
 
 EXPOSE 8080
 
