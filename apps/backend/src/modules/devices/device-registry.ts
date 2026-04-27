@@ -112,6 +112,10 @@ export class DeviceRegistry {
     return this.agents.get(agentId);
   }
 
+  getDevice(deviceId: string): ConnectedDevice | undefined {
+    return this.devices.get(deviceId);
+  }
+
   listDevices(): DeviceSummary[] {
     return Array.from(this.devices.values()).map(({ socket: _socket, ...device }) => ({ ...device }));
   }
