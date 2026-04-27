@@ -10,7 +10,8 @@ class RaikoIntentParser {
 
   Future<void> initialize(String backendUrl, String authToken) async {
     try {
-      _backendUrl = backendUrl;
+      // Upgrade HTTP to HTTPS if server requires it
+      _backendUrl = backendUrl.replaceFirst(RegExp(r'^http://'), 'https://');
       _authToken = authToken;
       _httpClient = HttpClient();
     } catch (e) {
@@ -33,7 +34,6 @@ class RaikoIntentParser {
       print('[IntentParser] Backend URL from config: $_backendUrl');
 
       final request = await _httpClient.postUrl(uri);
-      request.followRedirects = true;
       request.headers.set('Content-Type', 'application/json');
       request.headers.set('x-raiko-token', _authToken);
 
