@@ -2,7 +2,7 @@
 # Multi-stage Dockerfile for the R.A.I.K.O backend.
 # Targets Coolify and any generic Docker host with a reverse proxy in front.
 
-FROM node:22-alpine AS base
+FROM node:22-slim AS base
 WORKDIR /app
 
 # ─── deps ─────────────────────────────────────────────────────────────────
@@ -48,9 +48,11 @@ COPY --from=build /app/apps/agent-windows/package.json ./apps/agent-windows/
 
 # Production-only install. Workspace symlinks resolve shared_types/dist.
 # curl: Coolify/Docker healthcheck. wget: Piper download.
-# gcompat + libstdc++: glibc shim so Piper's prebuilt Linux binary runs on Alpine (musl).
+# Debian-slim has glibc natively, so Piper + ONNX Runtime run without compat shims.
 RUN npm ci --omit=dev \
- && apk add --no-cache curl wget unzip python3 gcompat libstdc++
+ && apt-get update \
+ && apt-get install -y --no-install-recommends curl wget unzip python3 ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
 
 # Install Piper TTS with en_US-ryan-high voice model.
 # Pinned to a real, immutable release tag — tag 2024.1.1 was never published and breaks builds.
