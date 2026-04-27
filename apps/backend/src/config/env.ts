@@ -122,7 +122,8 @@ export function loadConfig(): BackendConfig {
   const authToken = process.env.NODE_ENV === "production" ? readOptional(process.env.RAIKO_AUTH_TOKEN) : undefined;
 
   const appRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
-  const piperPath = process.env.RAIKO_PIPER_PATH ?? path.join(appRoot, "piper", "piper.exe");
+  const piperBinary = process.platform === "win32" ? "piper.exe" : "piper";
+  const piperPath = process.env.RAIKO_PIPER_PATH ?? path.join(appRoot, "piper", piperBinary);
   const voicesDir = process.env.RAIKO_VOICES_DIR ?? path.join(appRoot, "piper", "voices");
 
   return {

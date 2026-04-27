@@ -1,28 +1,37 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(flutter analyze:*)",
-      "Bash(npx tsc:*)",
-      "Bash(flutter emulators:*)",
-      "Bash(flutter devices:*)",
-      "Bash(flutter run:*)",
-      "Bash(flutter pub *)",
-      "Bash(flutter test *)",
-      "Bash(flutter build *)",
-      "Bash(npm list *)",
-      "Bash(where pm2 *)",
-      "Bash(node --check tools/standalone-agent.mjs)",
-      "Bash(npm --version)",
-      "Bash(npx --version)",
-      "Bash(node --check tools/build.mjs)",
-      "Bash(npm run *)",
-      "Bash(where docker *)",
-      "Bash(docker --version)",
-      "Bash(awk '{print $6, $7, $8, $9}')",
-      "Bash(git add *)",
-      "WebFetch(domain:jrsoftware.org)",
-      "Bash(powershell -Command \"Compress-Archive -Path Release\\\\* -DestinationPath '../../../../../tools/dist/raiko-desktop-windows.zip' -Force\")",
-      "Bash(powershell -Command \"Compress-Archive -Path 'C:/akaza/General/Antigravit Projects/R.A.I.K.O/apps/desktop/build/windows/x64/runner/Release/*' -DestinationPath 'C:/akaza/General/Antigravit Projects/R.A.I.K.O/tools/dist/raiko-desktop-windows.zip' -Force\")"
-    ]
-  }
+﻿{
+    "hooks":  {
+                  "SessionStart":  [
+                                       {
+                                           "hooks":  [
+                                                         {
+                                                             "command":  "powershell -NoProfile -File \"C:/akaza/General/Antigravit Projects/R.A.I.K.O/.dual-graph/prime.ps1\"",
+                                                             "type":  "command"
+                                                         }
+                                                     ],
+                                           "matcher":  ""
+                                       }
+                                   ],
+                  "Stop":  [
+                               {
+                                   "hooks":  [
+                                                 {
+                                                     "command":  "powershell -NoProfile -File \"C:/akaza/General/Antigravit Projects/R.A.I.K.O/.dual-graph/stop_hook.ps1\"",
+                                                     "type":  "command"
+                                                 }
+                                             ],
+                                   "matcher":  ""
+                               }
+                           ],
+                  "PreCompact":  [
+                                     {
+                                         "hooks":  [
+                                                       {
+                                                           "command":  "powershell -NoProfile -File \"C:/akaza/General/Antigravit Projects/R.A.I.K.O/.dual-graph/prime.ps1\"",
+                                                           "type":  "command"
+                                                       }
+                                                   ],
+                                         "matcher":  ""
+                                     }
+                                 ]
+              }
 }

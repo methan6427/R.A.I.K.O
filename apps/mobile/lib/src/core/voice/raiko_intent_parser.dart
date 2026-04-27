@@ -10,8 +10,9 @@ class RaikoIntentParser {
 
   Future<void> initialize(String backendUrl, String authToken) async {
     try {
-      // Upgrade HTTP to HTTPS if server requires it
-      _backendUrl = backendUrl.replaceFirst(RegExp(r'^http://'), 'https://');
+      // Upgrade HTTP to HTTPS for remote hosts (Coolify redirects); leave local dev as-is
+      final isLocalHost = RegExp(r'^http://(localhost|127\.0\.0\.1|10\.0\.2\.2|192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.)').hasMatch(backendUrl);
+      _backendUrl = isLocalHost ? backendUrl : backendUrl.replaceFirst(RegExp(r'^http://'), 'https://');
       _authToken = authToken;
       _httpClient = HttpClient();
     } catch (e) {

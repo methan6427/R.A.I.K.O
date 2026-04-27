@@ -297,8 +297,10 @@ class RaikoVoiceEngine extends ChangeNotifier {
 
   Future<String?> _fetchAudioFromBackend(String text) async {
     try {
-      // Upgrade HTTP to HTTPS if needed (Coolify backend redirects HTTP→HTTPS)
-      final backendUrl = client.baseHttpUrl.replaceFirst(RegExp(r'^http://'), 'https://');
+      // Coolify backend redirects HTTP→HTTPS, but skip upgrade for local dev hosts
+      final rawUrl = client.baseHttpUrl;
+      final isLocalHost = RegExp(r'^http://(localhost|127\.0\.0\.1|10\.0\.2\.2|192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.)').hasMatch(rawUrl);
+      final backendUrl = isLocalHost ? rawUrl : rawUrl.replaceFirst(RegExp(r'^http://'), 'https://');
       final baseUrl = backendUrl.endsWith('/') ? backendUrl : '$backendUrl/';
       final uri = Uri.parse(baseUrl).resolve('api/tts');
       final request = await _httpClient.postUrl(uri);
@@ -330,7 +332,9 @@ class RaikoVoiceEngine extends ChangeNotifier {
         throw Exception('TTS failed: HTTP ${response.statusCode}\n$errorBody');
       }
     } catch (e) {
-      _setError('Failed to fetch TTS: $e');
+      if (kDebugMode) {
+        print('TTS fetch error: $e');
+      }
       return null;
     }
   }

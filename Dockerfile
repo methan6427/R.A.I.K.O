@@ -28,7 +28,9 @@ ENV NODE_ENV=production \
     RAIKO_HOST=0.0.0.0 \
     RAIKO_PORT=8080 \
     RAIKO_RUN_MIGRATIONS=true \
-    PIPER_HOME=/app/piper
+    PIPER_HOME=/app/piper \
+    RAIKO_PIPER_PATH=/app/piper/piper \
+    RAIKO_VOICES_DIR=/app/piper/voices
 
 # Required at deploy-time (set in Coolify env tab or docker-compose):
 #   RAIKO_DATABASE_URL=postgres://user:pass@host:5432/raiko
