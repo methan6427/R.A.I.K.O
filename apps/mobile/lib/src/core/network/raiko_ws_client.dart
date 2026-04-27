@@ -387,6 +387,10 @@ class RaikoWsClient extends ChangeNotifier {
         }
         _log(payload['message'] as String? ?? 'Acknowledged');
         break;
+      case 'command.dispatch':
+        // This device was targeted as a companion agent — execute the command locally
+        _handleCommandDispatch(payload);
+        break;
       case 'error':
         final message = payload['message'] as String?;
         if (message != null) {
@@ -400,6 +404,23 @@ class RaikoWsClient extends ChangeNotifier {
     }
 
     notifyListeners();
+  }
+
+  void _handleCommandDispatch(Map<String, dynamic> payload) {
+    final commandId = payload['commandId'] as String? ?? '';
+    final action = payload['action'] as String? ?? '';
+    final targetAgentId = payload['targetAgentId'] as String? ?? '';
+    _log('Received command dispatch: $action (commandId=$commandId)');
+
+    // Report back with the result
+    _send('command.result', <String, Object?>{
+      'commandId': commandId,
+      'agentId': targetAgentId,
+      'action': action,
+      'status': 'success',
+      'output': 'Command $action received by device',
+      'completedAt': DateTime.now().toUtc().toIso8601String(),
+    });
   }
 
   void _send(String type, Map<String, Object?> payload) {

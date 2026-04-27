@@ -1,3 +1,4 @@
+import type WebSocket from "ws";
 import {
   ServerEventType,
   AgentCommand,
@@ -24,16 +25,28 @@ export class CommandDispatcher {
     }
 
     if (!agent) {
+      // Companion agents ({deviceId}-agent) have no socket — route to the parent device
+      if (payload.targetAgentId.endsWith("-agent")) {
+        const parentDeviceId = payload.targetAgentId.slice(0, -"-agent".length);
+        const device = this.registry.getDevice(parentDeviceId);
+        if (device) {
+          return this.dispatchToSocket(device.socket, payload);
+        }
+      }
       return { ok: false, message: `Agent ${payload.targetAgentId} is not connected.` };
     }
 
+    return this.dispatchToSocket(agent.socket, payload);
+  }
+
+  private dispatchToSocket(socket: WebSocket, payload: CommandDispatchPayload): { ok: boolean; message: string } {
     const event: RaikoEnvelope<CommandDispatchPayload> = {
       type: ServerEventType.CommandDispatch,
       payload,
     };
 
     try {
-      agent.socket.send(JSON.stringify(event));
+      socket.send(JSON.stringify(event));
       this.logger.info("Command dispatched", {
         commandId: payload.commandId,
         targetAgentId: payload.targetAgentId,
