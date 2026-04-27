@@ -38,18 +38,18 @@ class RaikoApiClient {
     return _decodeCommands(json['commands']);
   }
 
-  Future<Map<String, dynamic>> _getJson(String path) async {
-    final client = HttpClient();
-
-    try {
-      final request = await client.getUrl(_resolve(path));
-      _applyRequestHeaders(request);
-      final response = await request.close();
-      return _readJson(response, path);
-    } finally {
-      client.close(force: true);
-    }
+Future<Map<String, dynamic>> _getJson(String path) async {
+  final client = HttpClient();
+  try {
+    final request = await client.getUrl(_resolve(path));
+    _applyRequestHeaders(request);
+    final response = await request.close();
+    final result = await _readJson(response, path); // ← await explicitly
+    return result;
+  } finally {
+    client.close(); // ← remove force: true
   }
+}
 
   Future<Map<String, dynamic>> _readJson(
     HttpClientResponse response,
