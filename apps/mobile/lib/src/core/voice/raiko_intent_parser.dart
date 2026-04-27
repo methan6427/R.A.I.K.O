@@ -24,8 +24,11 @@ class RaikoIntentParser {
     String userName,
   ) async {
     try {
-      final uri = Uri.parse('$_backendUrl/api/intent-parse');
+      // Ensure base URL ends with / for proper path resolution
+      final baseUrl = _backendUrl.endsWith('/') ? _backendUrl : '$_backendUrl/';
+      final uri = Uri.parse(baseUrl).resolve('api/intent-parse');
       final request = await _httpClient.postUrl(uri);
+      request.followRedirects = true;
       request.headers.set('Content-Type', 'application/json');
       request.headers.set('x-raiko-token', _authToken);
 
