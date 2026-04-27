@@ -14,6 +14,9 @@ import 'raiko_speech_to_text.dart';
 import 'raiko_wake_word_detector.dart';
 import 'voice_models.dart';
 
+/// Set to true to skip sending commands to the PC agent (TTS-only test mode).
+const bool kVoiceDryRun = true;
+
 class RaikoVoiceEngine extends ChangeNotifier {
   final RaikoWsClient client;
   final RaikoSettingsStore settings;
@@ -56,6 +59,11 @@ class RaikoVoiceEngine extends ChangeNotifier {
       _audioPlayer = AudioPlayer();
       _httpClient = HttpClient();
       _anydesk = AnyDeskIntegration();
+
+      if (kDebugMode) {
+        _audioPlayer.onPlayerStateChanged.listen((s) => print('[TTS] player state: $s'));
+        _audioPlayer.onLog.listen((msg) => print('[TTS] player log: $msg'));
+      }
 
       if (porcupineAccessKey != null && porcupineAccessKey.isNotEmpty) {
         await _wakeWordDetector.initialize(porcupineAccessKey);
@@ -185,9 +193,15 @@ class RaikoVoiceEngine extends ChangeNotifier {
 
       // Execute command
       _setState(RaikoVoiceState.executing);
-      // Select the target agent before sending command
-      client.updateSelectedAgent(targetAgents.first.id);
-      client.sendCommand(intent.command);
+      if (kVoiceDryRun) {
+        if (kDebugMode) {
+          print('[DRY RUN] Skipping command "${intent.command}" on ${targetAgents.map((a) => a.name).join(",")}');
+        }
+      } else {
+        // Select the target agent before sending command
+        client.updateSelectedAgent(targetAgents.first.id);
+        client.sendCommand(intent.command);
+      }
 
       _setState(RaikoVoiceState.speaking);
       final successMessage = _buildSuccessMessage(
@@ -272,25 +286,40 @@ class RaikoVoiceEngine extends ChangeNotifier {
       _setState(RaikoVoiceState.speaking);
       notifyListeners();
 
-      // Fetch audio from backend TTS endpoint
+      if (kDebugMode) {
+        print('[TTS] Fetching audio for: "$text"');
+      }
+
       final audioPath = await _fetchAudioFromBackend(text);
       if (audioPath == null) {
+        if (kDebugMode) {
+          print('[TTS] No audio returned (fetch failed) - skipping playback');
+        }
         await Future.delayed(const Duration(seconds: 1));
         _setState(RaikoVoiceState.idle);
         return;
       }
 
-      // Play audio
-      await _audioPlayer.play(DeviceFileSource(audioPath));
+      if (kDebugMode) {
+        final file = File(audioPath);
+        final size = await file.exists() ? await file.length() : -1;
+        print('[TTS] Got audio file: $audioPath (${size} bytes) — playing');
+      }
 
-      // Wait for playback to finish
-      await _audioPlayer.onPlayerComplete.first;
+      await _audioPlayer.play(DeviceFileSource(audioPath));
+      // Don't hang in "speaking" if onPlayerComplete never fires (corrupt file, codec error)
+      try {
+        await _audioPlayer.onPlayerComplete.first.timeout(const Duration(seconds: 15));
+        if (kDebugMode) print('[TTS] Playback complete');
+      } on TimeoutException {
+        if (kDebugMode) print('[TTS] Playback completion timeout (15s) — forcing idle');
+        await _audioPlayer.stop();
+      }
       _setState(RaikoVoiceState.idle);
     } catch (e) {
       if (kDebugMode) {
-        print('TTS playback error: $e');
+        print('[TTS] Playback error: $e');
       }
-      // Don't fail the command if TTS fails - return to idle normally
       _setState(RaikoVoiceState.idle);
     }
   }
@@ -317,8 +346,34 @@ class RaikoVoiceEngine extends ChangeNotifier {
 
       final response = await request.close().timeout(const Duration(seconds: 30));
 
+      if (kDebugMode) {
+        final ct = response.headers.value('content-type') ?? '<none>';
+        final cl = response.headers.value('content-length') ?? '<unknown>';
+        print('[TTS] HTTP ${response.statusCode}  content-type=$ct  content-length=$cl');
+      }
+
       if (response.statusCode >= 200 && response.statusCode < 400) {
         final audioBytes = await response.expand((chunk) => chunk).toList();
+        if (audioBytes.isEmpty) {
+          if (kDebugMode) print('[TTS] Response body was empty');
+          return null;
+        }
+
+        if (kDebugMode) {
+          final head = audioBytes.take(8).toList();
+          final hex = head.map((b) => b.toRadixString(16).padLeft(2, '0')).join(' ');
+          final ascii = String.fromCharCodes(head.map((b) => (b >= 32 && b < 127) ? b : 0x2E));
+          final isRiff = audioBytes.length >= 4 &&
+              audioBytes[0] == 0x52 && audioBytes[1] == 0x49 &&
+              audioBytes[2] == 0x46 && audioBytes[3] == 0x46;
+          print('[TTS] First bytes: $hex  ascii="$ascii"  isWAV=$isRiff');
+          if (!isRiff) {
+            final preview = String.fromCharCodes(audioBytes.take(200))
+                .replaceAll('\n', ' ').replaceAll('\r', '');
+            print('[TTS] NOT a WAV. Preview: $preview');
+          }
+        }
+
         final dir = await getTemporaryDirectory();
         final file =
             File('${dir.path}/raiko-audio-${DateTime.now().millisecondsSinceEpoch}.wav');
@@ -327,7 +382,7 @@ class RaikoVoiceEngine extends ChangeNotifier {
       } else {
         final errorBody = await response.transform(utf8.decoder).join();
         if (kDebugMode) {
-          print('TTS ERROR: HTTP ${response.statusCode} - $errorBody');
+          print('[TTS] ERROR HTTP ${response.statusCode}: $errorBody');
         }
         throw Exception('TTS failed: HTTP ${response.statusCode}\n$errorBody');
       }

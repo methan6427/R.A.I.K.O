@@ -47,9 +47,10 @@ COPY --from=build /app/apps/backend/migrations ./apps/backend/migrations
 COPY --from=build /app/apps/agent-windows/package.json ./apps/agent-windows/
 
 # Production-only install. Workspace symlinks resolve shared_types/dist.
-# curl is added for the Coolify/Docker healthcheck.
-# wget is added for Piper download
-RUN npm ci --omit=dev && apk add --no-cache curl wget unzip python3
+# curl: Coolify/Docker healthcheck. wget: Piper download.
+# gcompat + libstdc++: glibc shim so Piper's prebuilt Linux binary runs on Alpine (musl).
+RUN npm ci --omit=dev \
+ && apk add --no-cache curl wget unzip python3 gcompat libstdc++
 
 # Install Piper TTS with en_US-ryan-high voice model.
 # Pinned to a real, immutable release tag — tag 2024.1.1 was never published and breaks builds.
@@ -60,9 +61,12 @@ RUN set -eux; \
     cd /app/piper; \
     wget --no-verbose -O piper.tar.gz "https://github.com/rhasspy/piper/releases/download/${PIPER_RELEASE}/piper_linux_x86_64.tar.gz"; \
     test -s piper.tar.gz; \
-    tar xzf piper.tar.gz --strip-components=0; \
+    # --strip-components=1 drops the leading "piper/" dir so the binary lands at /app/piper/piper
+    tar xzf piper.tar.gz --strip-components=1; \
     rm piper.tar.gz; \
+    test -f /app/piper/piper; \
     chmod +x /app/piper/piper; \
+    /app/piper/piper --help >/dev/null 2>&1 || (echo "piper failed to execute" && ls -la /app/piper && exit 1); \
     cd voices; \
     wget --no-verbose -O en_US-ryan-high.onnx       "${PIPER_VOICE_BASE}/en_US-ryan-high.onnx"; \
     wget --no-verbose -O en_US-ryan-high.onnx.json  "${PIPER_VOICE_BASE}/en_US-ryan-high.onnx.json"; \
