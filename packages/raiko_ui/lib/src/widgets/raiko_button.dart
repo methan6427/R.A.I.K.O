@@ -51,7 +51,7 @@ class RaikoButton extends StatelessWidget {
         : FilledButton.icon(
             onPressed: onPressed,
             style: style,
-            icon: Icon(icon, size: 18),
+            icon: Icon(icon, size: 22),
             label: Text(label),
           );
 
