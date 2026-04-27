@@ -290,7 +290,10 @@ class RaikoVoiceEngine extends ChangeNotifier {
 
   Future<String?> _fetchAudioFromBackend(String text) async {
     try {
-      final uri = Uri.parse('${client.baseHttpUrl}/api/tts');
+      // Upgrade HTTP to HTTPS if needed (Coolify backend redirects HTTP→HTTPS)
+      final backendUrl = client.baseHttpUrl.replaceFirst(RegExp(r'^http://'), 'https://');
+      final baseUrl = backendUrl.endsWith('/') ? backendUrl : '$backendUrl/';
+      final uri = Uri.parse(baseUrl).resolve('api/tts');
       final request = await _httpClient.postUrl(uri);
       request.headers.set('Content-Type', 'application/json');
       request.headers.set('x-raiko-token', client.authToken);
