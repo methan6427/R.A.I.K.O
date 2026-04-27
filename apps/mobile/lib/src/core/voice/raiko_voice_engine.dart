@@ -15,7 +15,7 @@ import 'raiko_wake_word_detector.dart';
 import 'voice_models.dart';
 
 /// Set to true to skip sending commands to the PC agent (TTS-only test mode).
-const bool kVoiceDryRun = true;
+const bool kVoiceDryRun = false;
 
 class RaikoVoiceEngine extends ChangeNotifier {
   final RaikoWsClient client;
