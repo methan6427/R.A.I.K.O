@@ -185,7 +185,8 @@ class RaikoVoiceEngine extends ChangeNotifier {
 
       // Execute command
       _setState(RaikoVoiceState.executing);
-      // Send command to the first matching agent (client has it pre-selected)
+      // Select the target agent before sending command
+      client.updateSelectedAgent(targetAgents.first.id);
       client.sendCommand(intent.command);
 
       _setState(RaikoVoiceState.speaking);
@@ -275,6 +276,7 @@ class RaikoVoiceEngine extends ChangeNotifier {
       final audioPath = await _fetchAudioFromBackend(text);
       if (audioPath == null) {
         await Future.delayed(const Duration(seconds: 1));
+        _setState(RaikoVoiceState.idle);
         return;
       }
 
@@ -283,8 +285,13 @@ class RaikoVoiceEngine extends ChangeNotifier {
 
       // Wait for playback to finish
       await _audioPlayer.onPlayerComplete.first;
+      _setState(RaikoVoiceState.idle);
     } catch (e) {
-      _setError('Failed to play response: $e');
+      if (kDebugMode) {
+        print('TTS playback error: $e');
+      }
+      // Don't fail the command if TTS fails - return to idle normally
+      _setState(RaikoVoiceState.idle);
     }
   }
 
@@ -308,7 +315,7 @@ class RaikoVoiceEngine extends ChangeNotifier {
 
       final response = await request.close().timeout(const Duration(seconds: 30));
 
-      if (response.statusCode == 200) {
+      if (response.statusCode >= 200 && response.statusCode < 400) {
         final audioBytes = await response.expand((chunk) => chunk).toList();
         final dir = await getTemporaryDirectory();
         final file =
@@ -316,7 +323,11 @@ class RaikoVoiceEngine extends ChangeNotifier {
         await file.writeAsBytes(audioBytes);
         return file.path;
       } else {
-        throw Exception('TTS failed: HTTP ${response.statusCode}');
+        final errorBody = await response.transform(utf8.decoder).join();
+        if (kDebugMode) {
+          print('TTS ERROR: HTTP ${response.statusCode} - $errorBody');
+        }
+        throw Exception('TTS failed: HTTP ${response.statusCode}\n$errorBody');
       }
     } catch (e) {
       _setError('Failed to fetch TTS: $e');

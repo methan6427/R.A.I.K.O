@@ -2,7 +2,8 @@ import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { randomBytes } from "crypto";
 import { join } from "path";
-import { tmpdir, homedir } from "os";
+import { tmpdir } from "os";
+import type { BackendConfig } from "../../config/env.js";
 
 
 export interface TTSOptions {
@@ -11,11 +12,14 @@ export interface TTSOptions {
 }
 
 export class VoiceModule {
-  private piperPath = join(homedir(), "AppData", "Local", "Piper", "piper.exe");
-  private voiceModelDir = join(homedir(), ".local", "share", "piper", "voices");
+  private piperPath: string;
+  private voiceModelDir: string;
   private defaultVoice = "en_US-ryan-high";
 
-  constructor() {}
+  constructor(config: BackendConfig) {
+    this.piperPath = config.tts.piperPath;
+    this.voiceModelDir = config.tts.voicesDir;
+  }
 
   /**
    * Convert text to speech using Piper
@@ -25,6 +29,13 @@ export class VoiceModule {
     try {
       if (!text || text.trim().length === 0) {
         throw new Error("Text cannot be empty");
+      }
+
+      // Check Piper executable exists
+      if (!existsSync(this.piperPath)) {
+        throw new Error(
+          `Piper executable not found at: ${this.piperPath}. Set RAIKO_PIPER_PATH to override.`,
+        );
       }
 
       // Voice selection (defaults to high-quality Ryan voice)
@@ -56,15 +67,22 @@ export class VoiceModule {
           lengthScale,
         ]);
 
+        let stderr = "";
+        child.stderr?.on("data", (data) => {
+          stderr += data.toString();
+        });
+
         child.stdin.write(text);
         child.stdin.end();
 
-        child.on("error", reject);
+        child.on("error", (err) => {
+          reject(new Error(`Failed to spawn Piper: ${err.message}`));
+        });
         child.on("close", (code) => {
           if (code === 0) {
             resolve();
           } else {
-            reject(new Error(`Piper exited with code ${code}`));
+            reject(new Error(`Piper exited with code ${code}. stderr: ${stderr}`));
           }
         });
       });

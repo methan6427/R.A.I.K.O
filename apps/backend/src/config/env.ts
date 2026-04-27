@@ -24,6 +24,10 @@ export interface BackendConfig {
     email: string;
     displayName: string;
   };
+  tts: {
+    piperPath: string;
+    voicesDir: string;
+  };
 }
 
 let dotenvLoaded = false;
@@ -115,8 +119,11 @@ export function loadConfig(): BackendConfig {
   ensureDotenvLoaded();
 
   const environment = parseEnvironment(process.env.NODE_ENV);
-  // Temporarily disable auth to debug WebSocket connection
   const authToken = process.env.NODE_ENV === "production" ? readOptional(process.env.RAIKO_AUTH_TOKEN) : undefined;
+
+  const appRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
+  const piperPath = process.env.RAIKO_PIPER_PATH ?? path.join(appRoot, "piper", "piper.exe");
+  const voicesDir = process.env.RAIKO_VOICES_DIR ?? path.join(appRoot, "piper", "voices");
 
   return {
     environment,
@@ -134,6 +141,10 @@ export function loadConfig(): BackendConfig {
       id: process.env.RAIKO_BOOTSTRAP_USER_ID ?? "operator-admin",
       email: process.env.RAIKO_BOOTSTRAP_USER_EMAIL ?? "admin@raiko.local",
       displayName: process.env.RAIKO_BOOTSTRAP_USER_DISPLAY_NAME ?? "R.A.I.K.O Operator",
+    },
+    tts: {
+      piperPath,
+      voicesDir,
     },
     ...(authToken ? { authToken } : {}),
   };

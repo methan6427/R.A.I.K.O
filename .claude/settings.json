@@ -30,7 +30,28 @@
       "Bash(curl -s -X POST http://localhost:8080/api/intent-parse -H \"Content-Type: application/json\" -H \"x-raiko-token: raiko-dev\" -d '{\"text\":\"power on the office-pc\",\"agents\":[\"office-pc\",\"laptop\"],\"userName\":\"Adam\"}')",
       "Bash(curl -s -X POST http://localhost:8080/api/intent-parse -H \"Content-Type: application/json\" -H \"x-raiko-token: raiko-dev\" -d '{\"text\":\"wake on lan laptop\",\"agents\":[\"office-pc\",\"laptop\"],\"userName\":\"Adam\"}')",
       "Bash(curl -s -X POST http://localhost:8080/api/intent-parse -H \"Content-Type: application/json\" -H \"x-raiko-token: raiko-dev\" -d '{\"text\":\"turn on all devices\",\"agents\":[\"office-pc\",\"laptop\"],\"userName\":\"Adam\"}')",
-      "Read(//c/c/akaza/General/Antigravit Projects/R.A.I.K.O/**)"
+      "Read(//c/c/akaza/General/Antigravit Projects/R.A.I.K.O/**)",
+      "Bash(flutter screenshot *)",
+      "Bash(adb -s emulator-5554 shell input tap 169 530)",
+      "Bash(adb -s emulator-5554 shell input keyevent KEYCODE_HOME)",
+      "Bash(adb -s emulator-5554 shell input swipe 256 400 256 200)",
+      "Bash(adb -s emulator-5554 shell input tap 491 530)",
+      "Bash(adb -s emulator-5554 shell input tap 256 200)",
+      "Bash(adb -s emulator-5554 shell input tap 490 730)",
+      "Bash(adb -s emulator-5554 shell input tap 169 480)",
+      "Bash(adb -s emulator-5554 shell input tap 207 530)",
+      "Bash(adb -s emulator-5554 shell input tap 490 530)",
+      "Bash(flutter clean *)",
+      "Bash(adb -s emulator-5554 logcat -c)",
+      "Bash(timeout 15 adb -s emulator-5554 logcat *:S flutter:V IntentParser:V)",
+      "Bash(adb -s emulator-5554 shell input tap 256 300)",
+      "Bash(pkill -f \"adb logcat\")",
+      "Bash(adb -s emulator-5554 shell input tap 256 350)",
+      "Bash(timeout 5 adb -s emulator-5554 logcat '*:S' 'flutter:V')",
+      "Bash(timeout 3 adb -s emulator-5554 logcat 'flutter:V' '*:S')",
+      "Bash(xargs grep *)",
+      "PowerShell(Get-ChildItem -Path \"$env:TEMP\\\\test.wav\" | Select-Object FullName, Length)",
+      "Bash(\"/c/Users/methan/AppData/Local/Piper/piper.exe\" --model \"/c/Users/methan/.local/share/piper/voices/en_US-ryan-high.onnx\" --output-file \"test.wav\" --length-scale 1.0)"
     ]
   }
 }

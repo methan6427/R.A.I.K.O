@@ -47,6 +47,10 @@ test("persisted command dispatch and result flow survives app recreation", async
       email: "admin@raiko.local",
       displayName: "R.A.I.K.O Operator",
     },
+    tts: {
+      piperPath: "/usr/bin/piper",
+      voicesDir: "/tmp/piper-voices",
+    },
   };
 
   let secondApp: Awaited<ReturnType<typeof createApp>> | undefined;
@@ -221,6 +225,10 @@ test("startup reconciliation marks stale persisted devices and agents offline un
       id: "operator-admin",
       email: "admin@raiko.local",
       displayName: "R.A.I.K.O Operator",
+    },
+    tts: {
+      piperPath: "/usr/bin/piper",
+      voicesDir: "/tmp/piper-voices",
     },
   };
 
@@ -430,6 +438,10 @@ test("unknown command results are rejected without broadcast or activity and emi
       email: "admin@raiko.local",
       displayName: "R.A.I.K.O Operator",
     },
+    tts: {
+      piperPath: "/usr/bin/piper",
+      voicesDir: "/tmp/piper-voices",
+    },
   };
 
   const appBundle = await createApp(config, {
@@ -561,6 +573,10 @@ test("mobile websocket registration via auth header does not push dashboard snap
       id: "operator-admin",
       email: "admin@raiko.local",
       displayName: "R.A.I.K.O Operator",
+    },
+    tts: {
+      piperPath: "/usr/bin/piper",
+      voicesDir: "/tmp/piper-voices",
     },
   };
 

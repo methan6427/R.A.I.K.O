@@ -91,7 +91,7 @@ export class ModuleContainer {
       config.commandLimit,
     );
     const automation = new AutomationModule();
-    const voice = new VoiceModule();
+    const voice = new VoiceModule(config);
     const intent = new IntentParser();
 
     await devices.reconcileStartupState();

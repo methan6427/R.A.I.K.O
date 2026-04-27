@@ -208,6 +208,18 @@ Add to mobile UI:
 - Test on emulator before saying "done"
 - Review code changes for correctness first
 
+### 11.  random bugs i found
+
+- the reconnect button icon is outside the button boundaries 
+- the app  disconnects and reconnects automatically every few minutes.
+- voice assisstant is dumb if u change in ur commands different than the specefic commands it doesn't understand
+-  the backend endpont section should be hidden and  not showing for users and it should auto loads the data as:
+     HTTP URL: http://raiko.olive-dev.com
+     Websocket URL: wss://raiko.olive-dev.com/ws
+     Auth Token: EuQfbYLxtWnS8t1stZhJTQ3OLcavDJpZvKhNRJV4HM0
+
+     
+
 ---
 
 ## CONCRETE FIX PLAN (PRIORITY ORDER)

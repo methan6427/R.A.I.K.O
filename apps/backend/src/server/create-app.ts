@@ -1,4 +1,4 @@
-import Fastify from "fastify";
+import Fastify, { type FastifyRequest } from "fastify";
 import rateLimit from "@fastify/rate-limit";
 import { Logger } from "../core/logger.js";
 import type { BackendConfig } from "../config/env.js";
@@ -30,7 +30,7 @@ export async function createApp(
     timeWindow: "1 minute",
     // Health checks (Docker, Coolify, uptime monitors) and the WebSocket upgrade
     // path must never be limited.
-    allowList: (request) => request.url === "/health" || request.url.startsWith("/ws"),
+    allowList: (request: FastifyRequest) => request.url === "/health" || request.url.startsWith("/ws"),
   });
 
   await database.ensureReady({
