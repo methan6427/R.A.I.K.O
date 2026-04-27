@@ -24,9 +24,14 @@ class RaikoIntentParser {
     String userName,
   ) async {
     try {
-      // Ensure base URL ends with / for proper path resolution
+      // Construct URL - ensure proper formatting for resolve()
       final baseUrl = _backendUrl.endsWith('/') ? _backendUrl : '$_backendUrl/';
       final uri = Uri.parse(baseUrl).resolve('api/intent-parse');
+
+      print('[IntentParser] Requesting: $uri');
+      print('[IntentParser] Base URL: $baseUrl');
+      print('[IntentParser] Backend URL from config: $_backendUrl');
+
       final request = await _httpClient.postUrl(uri);
       request.followRedirects = true;
       request.headers.set('Content-Type', 'application/json');
@@ -42,6 +47,9 @@ class RaikoIntentParser {
       request.write(body);
 
       final response = await request.close().timeout(const Duration(seconds: 30));
+
+      print('[IntentParser] Response status: ${response.statusCode}');
+      print('[IntentParser] Response location: ${response.headers['location']}');
 
       if (response.statusCode == 200) {
         final responseBody = await response.transform(utf8.decoder).join();
