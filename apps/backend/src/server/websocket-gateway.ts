@@ -150,7 +150,7 @@ async function handleClose(modules: ModuleContainer, socket: WebSocket, logger: 
 
 async function broadcastSnapshots(modules: ModuleContainer): Promise<void> {
   const [devices, agents, activityEntries, commandEntries] = await Promise.all([
-    modules.devices.listDevices(),
+    Promise.resolve(modules.devices.listDevices()),
     modules.devices.listAgents(),
     modules.activity.list(),
     modules.commands.list(),

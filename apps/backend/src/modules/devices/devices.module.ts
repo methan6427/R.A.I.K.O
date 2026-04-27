@@ -45,6 +45,9 @@ export class DevicesModule {
       lastSeenAt: now,
     });
 
+    // Auto-create companion agent for this device
+    await this.registerCompanionAgent(payload.deviceId, payload.name, payload.platform, now);
+
     this.logger.info("Device registered", {
       deviceId: payload.deviceId,
       platform: payload.platform,
@@ -93,17 +96,57 @@ export class DevicesModule {
   async markDisconnected(disconnected: { id: string; kind: "device" | "agent" }, at: string): Promise<void> {
     if (disconnected.kind === "device") {
       await this.repository.markDeviceDisconnected(disconnected.id, at);
+      // Also mark the companion agent as offline
+      const companionAgentId = `${disconnected.id}-agent`;
+      await this.repository.markAgentDisconnected(companionAgentId, at);
       return;
     }
 
     await this.repository.markAgentDisconnected(disconnected.id, at);
   }
 
+  private async registerCompanionAgent(
+    deviceId: string,
+    deviceName: string,
+    platform: string,
+    now: string,
+  ): Promise<void> {
+    const companionAgentId = `${deviceId}-agent`;
+    const companionAgentName = `${deviceName}-agent`;
+
+    await this.repository.upsertAgentConnection({
+      id: companionAgentId,
+      name: companionAgentName,
+      platform,
+      supportedCommands: [
+        AgentCommand.Shutdown,
+        AgentCommand.Restart,
+        AgentCommand.Sleep,
+        AgentCommand.Lock,
+      ],
+      connectedAt: now,
+      lastSeenAt: now,
+    });
+
+    this.logger.info("Companion agent registered", {
+      companionAgentId,
+      deviceId,
+      platform,
+    });
+  }
+
   listDevices() {
     return this.registry.listDevices();
   }
 
-  listAgents() {
-    return this.registry.listAgents();
+  async listAgents() {
+    const registryAgents = this.registry.listAgents();
+    const onlineAgents = await this.repository.listOnlineAgents();
+
+    // Merge: prefer registry agents (connected), then add database agents not in registry
+    const agentIds = new Set(registryAgents.map(a => a.id));
+    const uniqueDatabaseAgents = onlineAgents.filter(a => !agentIds.has(a.id));
+
+    return [...registryAgents, ...uniqueDatabaseAgents];
   }
 }
