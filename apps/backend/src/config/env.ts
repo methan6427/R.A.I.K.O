@@ -115,7 +115,8 @@ export function loadConfig(): BackendConfig {
   ensureDotenvLoaded();
 
   const environment = parseEnvironment(process.env.NODE_ENV);
-  const authToken = readOptional(process.env.RAIKO_AUTH_TOKEN);
+  // Temporarily disable auth to debug WebSocket connection
+  const authToken = process.env.NODE_ENV === "production" ? readOptional(process.env.RAIKO_AUTH_TOKEN) : undefined;
 
   return {
     environment,

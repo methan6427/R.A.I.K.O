@@ -29,7 +29,8 @@
       "Bash(curl -s -X POST http://localhost:8080/api/intent-parse -H \"Content-Type: application/json\" -H \"x-raiko-token: raiko-dev\" -d '{\"text\":\"wake up the office pc\",\"agents\":[\"office-pc\",\"laptop\"],\"userName\":\"Adam\"}')",
       "Bash(curl -s -X POST http://localhost:8080/api/intent-parse -H \"Content-Type: application/json\" -H \"x-raiko-token: raiko-dev\" -d '{\"text\":\"power on the office-pc\",\"agents\":[\"office-pc\",\"laptop\"],\"userName\":\"Adam\"}')",
       "Bash(curl -s -X POST http://localhost:8080/api/intent-parse -H \"Content-Type: application/json\" -H \"x-raiko-token: raiko-dev\" -d '{\"text\":\"wake on lan laptop\",\"agents\":[\"office-pc\",\"laptop\"],\"userName\":\"Adam\"}')",
-      "Bash(curl -s -X POST http://localhost:8080/api/intent-parse -H \"Content-Type: application/json\" -H \"x-raiko-token: raiko-dev\" -d '{\"text\":\"turn on all devices\",\"agents\":[\"office-pc\",\"laptop\"],\"userName\":\"Adam\"}')"
+      "Bash(curl -s -X POST http://localhost:8080/api/intent-parse -H \"Content-Type: application/json\" -H \"x-raiko-token: raiko-dev\" -d '{\"text\":\"turn on all devices\",\"agents\":[\"office-pc\",\"laptop\"],\"userName\":\"Adam\"}')",
+      "Read(//c/c/akaza/General/Antigravit Projects/R.A.I.K.O/**)"
     ]
   }
 }
