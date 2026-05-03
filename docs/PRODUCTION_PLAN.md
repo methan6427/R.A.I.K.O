@@ -180,6 +180,10 @@ Deferred:
 | 11 | AnyDesk integration                                        | next     |
 | 12 | Voice assistant                                            | later    |
 | 13 | Security hardening (JWT, pairing, audit log, rate limit)   | later    |
+| 14 | implement the remote pc control system                     | later    | 
+| 15 | harden the voice commands with more data as commands       | later    |
+| 16 | solve the random reconnections issue                      | later    | 
+   
 
 ---
 
