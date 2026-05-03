@@ -489,4 +489,5 @@ Examples live at `apps/backend/.env.example`,
 - [Production Plan](docs/PRODUCTION_PLAN.md)
 - [Status Report](docs/STATUS_REPORT.md)
 - [Prompt Checklist](docs/CODEX_PROMPTS.md)
-- [Work Log](docs/WORK_DONE.md)
+- [Work Done](docs/WORK_DONE.md)
+- [Status Report](docs/STATUS_REPORT.md)
